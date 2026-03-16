@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "feature/**"
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: 24
+          cache: true
+          run-install: true
+
+      - name: Run tests
+        run: vp test
+
+      - name: Build workspace
+        run: vp run build -r
+
+      - name: Install Playwright browser
+        working-directory: apps/website
+        run: vp exec playwright install --with-deps chromium
+
+      - name: Run website e2e tests
+        run: vp run website#test:e2e

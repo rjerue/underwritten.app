@@ -1,0 +1,129 @@
+import { expect, test, type Page } from "@playwright/test";
+
+import { createDraft, editor, gotoEditor, rawMode, setCaretInEditorText } from "./helpers";
+
+async function setCodeCaret(page: Page, edge: "start" | "end") {
+  await page.getByTestId("code-block-input").evaluate((node, targetEdge) => {
+    if (!(node instanceof HTMLTextAreaElement)) return;
+
+    const offset = targetEdge === "start" ? 0 : node.value.length;
+    node.focus();
+    node.setSelectionRange(offset, offset);
+  }, edge);
+}
+
+test.describe("code block workflows", () => {
+  test("creates a code block from triple backticks and serializes the selected language", async ({
+    page,
+  }) => {
+    await gotoEditor(page, createDraft([""]));
+
+    await editor(page).click();
+    await page.keyboard.type("```");
+
+    await expect(page.getByTestId("code-block-editor")).toBeVisible();
+    await expect(page.getByTestId("code-block-input")).toBeFocused();
+
+    await page.getByTestId("code-block-language").selectOption("jsx");
+    await page.getByTestId("code-block-input").fill('console.log("yo")');
+
+    await page.getByTestId("mode-raw").click();
+    await expect(rawMode(page)).toHaveValue('```jsx\nconsole.log("yo")\n```\n');
+  });
+
+  test("reopens fenced markdown code blocks as embedded write-mode blocks", async ({ page }) => {
+    await gotoEditor(page, createDraft([""]));
+
+    await page.getByTestId("mode-raw").click();
+    await rawMode(page).fill('before\n```jsx\nconsole.log("yo")\n```\nafter');
+
+    await page.getByTestId("mode-write").click();
+    await expect(page.getByTestId("code-block-input")).toHaveValue('console.log("yo")');
+    await expect(page.getByTestId("code-block-language")).toHaveValue("jsx");
+
+    await setCaretInEditorText(page, "before", "end");
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByTestId("code-block-input")).toBeFocused();
+
+    await setCodeCaret(page, "end");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.type("!");
+
+    await page.getByTestId("mode-raw").click();
+    await expect(rawMode(page)).toHaveValue('before\n```jsx\nconsole.log("yo")\n```\n!after');
+  });
+
+  test("renders mermaid diagrams in read mode and supports preview in write mode", async ({
+    page,
+  }) => {
+    await gotoEditor(page, createDraft([""]));
+
+    await page.getByTestId("mode-raw").click();
+    await rawMode(page).fill("```mermaid\ngraph TD\nA[Start] --> B[Finish]\n```");
+
+    await page.getByTestId("mode-write").click();
+    await expect(page.getByTestId("code-block-language")).toHaveValue("mermaid");
+    await expect(page.getByTestId("code-block-panel-preview")).toBeVisible();
+
+    await page.getByTestId("code-block-panel-preview").click();
+    await expect(page.locator('[data-testid="code-block-diagram-preview"] svg')).toBeVisible();
+
+    await page.getByTestId("mode-read").click();
+    await expect(
+      page.locator(
+        '[data-testid="read-mode-content"] [data-testid="code-block-diagram-preview"] svg',
+      ),
+    ).toBeVisible();
+
+    await page.getByTestId("mode-raw").click();
+    await expect(rawMode(page)).toHaveValue("```mermaid\ngraph TD\nA[Start] --> B[Finish]\n```\n");
+  });
+
+  test("renders PlantUML diagrams with a deflated preview URL in write and read mode", async ({
+    page,
+  }) => {
+    const diagramMarkdown = "```plantuml\n@startuml\nAlice -> Bob: hi\n@enduml\n```";
+    const expectedUrl =
+      "https://www.plantuml.com/plantuml/svg/SoWkIImgAStDuNBCoKnELT2rKt3AJx9IoCZaSaZDIm5A0000";
+
+    await gotoEditor(page, createDraft([""]));
+
+    await page.getByTestId("mode-raw").click();
+    await rawMode(page).fill(diagramMarkdown);
+
+    await page.getByTestId("mode-write").click();
+    await expect(page.getByTestId("code-block-language")).toHaveValue("plantuml");
+    await expect(page.getByTestId("code-block-panel-preview")).toBeVisible();
+
+    await page.getByTestId("code-block-panel-preview").click();
+    await expect(
+      page.locator(
+        '[data-testid="code-block-diagram-preview"] img[alt="PlantUML diagram preview"]',
+      ),
+    ).toHaveAttribute("src", expectedUrl);
+
+    await page.getByTestId("mode-read").click();
+    await expect(
+      page.locator(
+        '[data-testid="read-mode-content"] [data-testid="code-block-diagram-preview"] img[alt="PlantUML diagram preview"]',
+      ),
+    ).toHaveAttribute("src", expectedUrl);
+
+    await page.getByTestId("mode-raw").click();
+    await expect(rawMode(page)).toHaveValue(`${diagramMarkdown}\n`);
+  });
+
+  test("deletes an empty code block with backspace", async ({ page }) => {
+    await gotoEditor(page, createDraft([""]));
+
+    await editor(page).click();
+    await page.keyboard.type("```");
+    await expect(page.getByTestId("code-block-input")).toBeFocused();
+
+    await page.keyboard.press("Backspace");
+    await expect(page.getByTestId("code-block-editor")).toHaveCount(0);
+
+    await page.getByTestId("mode-raw").click();
+    await expect(rawMode(page)).toHaveValue("");
+  });
+});
