@@ -177,13 +177,40 @@ test.describe("editor core flows", () => {
       ),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Using MCP" })).toBeVisible();
-    await expect(page.getByText('"args": ["-y", "underwritten-mcp"]')).toBeVisible();
-    await expect(page.getByText("To reach the author, contact rjerue on X.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "rjerue" })).toHaveAttribute(
-      "href",
-      "https://x.com/rjerue",
+    await expect(page.getByTestId("mcp-client-select")).toHaveValue("codex");
+    await expect(
+      page.getByText("codex mcp add underwritten -- npx -y underwritten-mcp"),
+    ).toBeVisible();
+    await page.getByTestId("mcp-client-select").selectOption("claude-code");
+    await expect(page.getByTestId("mcp-client-select")).toHaveValue("claude-code");
+    await expect(page.getByText('"type": "stdio"')).toBeVisible();
+    await expect(page.getByText('"command": "npx"')).toBeVisible();
+    await expect(
+      page.getByText("Add this to a project-level .mcp.json file in Claude Code."),
+    ).toBeVisible();
+    await page.getByTestId("mcp-client-select").selectOption("kiro");
+    await expect(page.getByTestId("mcp-client-select")).toHaveValue("kiro");
+    await expect(page.getByText('"disabled": false')).toBeVisible();
+    await expect(page.getByText(".kiro/settings/mcp.json")).toBeVisible();
+    await page.getByTestId("mcp-client-select").selectOption("opencode");
+    await expect(page.getByTestId("mcp-client-select")).toHaveValue("opencode");
+    await expect(page.getByText('"$schema": "https://opencode.ai/config.json"')).toBeVisible();
+    await expect(page.getByText('"command": ["npx", "-y", "underwritten-mcp"]')).toBeVisible();
+    await expect(page.getByText("Problems? File an issue on github")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Problems? File an issue on github" }),
+    ).toHaveAttribute("href", "https://github.com/rjerue/underwritten.app/issues");
+    await expect(
+      page.getByRole("link", { name: "github.com/rjerue/underwritten.app" }),
+    ).toHaveAttribute("href", "https://github.com/rjerue/underwritten.app");
+    await expect(page.getByRole("link", { name: "Problems? File an issue on github" })).toHaveCSS(
+      "cursor",
+      "pointer",
     );
-    await expect(page.getByRole("link", { name: "rjerue" })).toHaveCSS("cursor", "pointer");
+    await expect(page.getByRole("link", { name: "github.com/rjerue/underwritten.app" })).toHaveCSS(
+      "cursor",
+      "pointer",
+    );
     await expect(page.getByTestId("document-title")).toHaveCount(0);
 
     await page.getByTestId("home-nav").click();
