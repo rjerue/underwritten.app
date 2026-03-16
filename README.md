@@ -1,61 +1,66 @@
-# Vite+ Monorepo Starter
+# Underwritten
 
-A starter for creating a Vite+ monorepo.
+Underwritten is a browser-first markdown editor with a companion MCP bridge. The web app owns the editor and workspace state. The published `underwritten-mcp` package lets external MCP clients connect to that live browser session through a local bridge process.
 
-## MCP
+## Apps
 
-This repo now includes a local MCP bridge for `underwritten.app`.
+- `apps/website`: the Underwritten web app and PWA
+- `apps/mcp`: the published `underwritten-mcp` package
 
-- Package: `apps/mcp`
-- Shared protocol types: `apps/mcp/src/contract.ts`
-- Architecture and setup: [`apps/mcp/README.md`](./apps/mcp/README.md)
+The MCP package is documented in [`apps/mcp/README.md`](./apps/mcp/README.md).
 
 ## Development
 
-- Check everything is ready:
+Install dependencies:
 
 ```bash
-vp run ready
+vp install
 ```
 
-- Run the workspace tests:
+Run the website:
 
 ```bash
-vp run test -r
+vp run website#dev
 ```
 
-- Install the Playwright browser for the website e2e suite:
+Run the MCP bridge from source in another terminal:
 
 ```bash
-vp run website#test:e2e:install
+vp dlx tsx apps/mcp/src/cli.ts
 ```
 
-- Run the website integration tests:
+## Validation
+
+Run formatting, linting, and type checks:
+
+```bash
+vp check
+```
+
+Run unit tests:
+
+```bash
+vp test
+```
+
+Run end-to-end tests:
 
 ```bash
 vp run test:e2e
 ```
 
-- Run the website integration tests in headed mode:
+Install Playwright browsers when needed:
 
 ```bash
-vp run test:e2e:headed
+vp run website#test:e2e:install
 ```
 
-- Run the website integration tests with the Playwright UI:
-
-```bash
-vp run test:e2e:ui
-```
-
-- Build the monorepo:
+Build the monorepo:
 
 ```bash
 vp run build -r
 ```
 
-- Run the development server:
+## License
 
-```bash
-vp run dev
-```
+MIT

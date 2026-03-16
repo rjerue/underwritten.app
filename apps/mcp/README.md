@@ -1,28 +1,23 @@
-# Underwritten MCP Bridge
+# underwritten-mcp
 
-`underwritten-mcp` is the local MCP companion for `underwritten.app`.
+`underwritten-mcp` is the published MCP server package for [Underwritten](https://underwritten.app). It runs as a local process, speaks MCP over `stdio`, exposes a localhost HTTP bridge for the browser app, and routes tool calls into the active Underwritten editor session.
 
-It is the MCP server. The browser app is not.
+The package exists because Underwritten itself is a browser app. External MCP clients need a local companion that can:
 
-## Why this package exists
+- start from a normal MCP command
+- bind a localhost API the browser can reach
+- pair with a live Underwritten tab
+- operate on the real editor and workspace state already open in the app
 
-`underwritten.app` is a PWA and the editor state lives in the browser. External MCP clients need a local process that can:
+## Install
 
-- speak MCP over `stdio`
-- bind a localhost API
-- coordinate with the live browser editor session
+You can run the published package directly:
 
-This package provides that bridge while the PWA remains the source of truth for document and workspace state.
+```bash
+npx -y underwritten-mcp
+```
 
-## Monorepo layout
-
-- `apps/mcp`: publishable MCP server package and localhost bridge
-- `apps/mcp/src/contract.ts`: shared browser-safe protocol types and markdown edit helpers
-- `apps/website`: PWA integration, bridge discovery, session registration, polling, and settings UI
-
-## User setup
-
-The intended end-user MCP config is:
+The intended end-user MCP configuration is:
 
 ```json
 {
@@ -35,102 +30,24 @@ The intended end-user MCP config is:
 }
 ```
 
-After that:
+After the process starts:
 
-1. The MCP client starts `underwritten-mcp`.
-2. The bridge binds a localhost API on `127.0.0.1`.
-3. The PWA discovers the bridge automatically and pairs without a manual token-copy step.
-4. The active editor tab registers itself and starts polling for pending actions.
+1. `underwritten-mcp` binds a free localhost port on `127.0.0.1`.
+2. The Underwritten web app discovers the bridge with `GET /discover`.
+3. The browser pairs with `POST /pair`.
+4. The active tab syncs session state and executes queued actions.
 
-## Running locally
+## What It Does
 
-Install dependencies first:
+- Runs an MCP server over `stdio`
+- Exposes a localhost bridge for the browser app
+- Routes file and document operations to the most relevant live Underwritten tab
+- Shares browser-safe contract types through `underwritten-mcp/contract`
+- Keeps the browser app as the source of truth for workspace and editor state
 
-```bash
-vp install
-```
+This is the published bridge package. The website app is not the MCP server.
 
-Run the website in one terminal:
-
-```bash
-vp run website#dev
-```
-
-Run the MCP bridge from source in another terminal:
-
-```bash
-vp dlx tsx apps/mcp/src/cli.ts
-```
-
-If you want to run the built output instead:
-
-```bash
-vp exec tsc -p apps/mcp/tsconfig.build.json
-node apps/mcp/dist/cli.js
-```
-
-If you want to test the user-facing bootstrap shape locally, the equivalent MCP client entry is still:
-
-```json
-{
-  "mcpServers": {
-    "underwritten": {
-      "command": "npx",
-      "args": ["-y", "underwritten-mcp"]
-    }
-  }
-}
-```
-
-## Validation
-
-Repo-level validation:
-
-```bash
-vp check
-vp test
-vp run test:e2e
-```
-
-MCP package build only:
-
-```bash
-vp exec tsc -p apps/mcp/tsconfig.build.json
-```
-
-## Discovery and pairing
-
-By default the PWA scans a reserved localhost port range and probes `GET /discover`.
-
-- Reserved range: `45261-45271`
-- Bind address: `127.0.0.1`
-- Pairing: automatic `POST /pair` from an approved Underwritten origin
-- Session sync: `POST /session/sync`
-- Status: `GET /status`
-
-For test isolation and local debugging, the browser also honors a `localStorage` override at `underwritten.mcp.bridgePorts` with an explicit JSON array of ports to probe.
-
-## Browser session model
-
-Each tab registers as a distinct session with:
-
-- `sessionId`
-- `activeFilePath`
-- `title`
-- `markdown`
-- `dirty`
-- `storageMode`
-- `nativeFolderSelected`
-- `revision`
-- `lastHeartbeatAt`
-- `lastFocusAt`
-- `visibilityState`
-- `pageUrl`
-- `windowLabel`
-
-The browser polls the bridge, receives queued actions, applies them through the existing `EditorPage` editor/workspace code paths, and posts the result back in the next sync.
-
-## Tool surface
+## Tool Surface
 
 Workspace tools:
 
@@ -144,69 +61,120 @@ Workspace tools:
 - `delete_path`
 - `save_document`
 
-Markdown tools:
+Document tools:
 
 - `get_current_document`
 - `replace_current_document`
 - `apply_markdown_edits`
 
-### Markdown edit semantics
+`apply_markdown_edits` works on raw markdown text with literal anchored matching. Targets use a literal `text` value and optional 1-based `occurrence`. Edits apply sequentially against the updated buffer, and ambiguous or missing matches fail explicitly.
 
-`apply_markdown_edits` operates on raw markdown text, not editor-internal node ids.
+## Bridge Behavior
 
-- Target matching is literal text matching.
-- `occurrence` is 1-based when provided.
-- If `occurrence` is omitted, the target text must match exactly once.
-- Ambiguous or missing targets fail with a clear error.
-- Edits apply sequentially to the updated markdown buffer.
+The bridge only listens on `127.0.0.1` and uses a reserved port range of `45261-45271` by default. The browser app pairs first, receives a bearer token, and then uses that token for sync and status requests.
 
-## Deterministic routing
+Endpoints:
 
-Current-document and workspace tools route to one live session:
+- `GET /discover`
+- `POST /pair`
+- `POST /session/sync`
+- `POST /session/disconnect`
+- `GET /status`
 
-1. Keep only live sessions. A live session has a fresh heartbeat within `15s` and has not disconnected.
-2. Sort by most recent `lastFocusAt`.
-3. Break ties with most recent `lastHeartbeatAt`.
-4. Break remaining ties lexically by `sessionId`.
-5. If no live session remains, return an explicit error instead of guessing.
+The browser polls every `1000ms`, and sessions expire after `15000ms` without a fresh heartbeat.
 
-This keeps tool routing deterministic across multiple open tabs while leaving room for future explicit `sessionId` targeting.
+## Session Routing
 
-## Security model
+Tool calls target one live browser session at a time. Routing is deterministic:
 
-- The HTTP bridge binds only to `127.0.0.1`.
-- Requests are limited to Underwritten origins plus local dev origins (`localhost` and `127.0.0.1`).
-- The browser must pair first and then present a bridge-issued bearer token.
-- The bridge does not expose shell execution.
-- Workspace operations are restricted to Underwritten’s real browser workspace model.
-- Native folder access still depends on the browser-granted File System Access handle already chosen in the app.
+1. Keep only live, non-disconnected sessions.
+2. Prefer the most recent `lastFocusAt`.
+3. Break ties with the most recent `lastHeartbeatAt`.
+4. Break any remaining tie lexically by `sessionId`.
 
-### Threat model limits
+If no live session is available, the bridge returns an explicit error instead of guessing.
 
-- Pairing is automatic for approved origins, so trust is anchored in the origin allowlist and localhost-only binding.
-- A malicious script running on an approved Underwritten origin would inherit the same bridge access as the app.
-- Multiple simultaneous MCP bridge processes are supported, but the browser only probes the configured port list/range and pairs with bridges it can discover.
+## Package Exports
 
-## Settings UI
+Default package exports:
 
-The existing settings dialog now includes an `MCP Bridge` section with:
+- `startUnderwrittenBridge`
+- `resolveBridgePort`
+- `UnderwrittenBridgeService`
+- `UnderwrittenBridgeError`
 
-- reachability / connection status
-- current session id
-- detected localhost port
-- known session count
-- copyable MCP config snippet
-- reconnect action
+Contract exports are available from `underwritten-mcp/contract`, including:
 
-## Current limitations
+- `underwrittenBridgePortRange`
+- `underwrittenBridgeApiVersion`
+- markdown edit types and helpers
+- session, status, and action types shared with the browser app
 
-- The public tool surface does not yet support explicit `sessionId` targeting.
-- `delete_path.force` only bypasses unsaved-current-document protection; it is not a separate recursive-delete flag because the browser file APIs already define directory deletion behavior.
-- The settings panel reports bridge/session status from the local browser’s perspective; it is not a multi-client admin console.
+Example:
 
-## Future improvements
+```ts
+import { startUnderwrittenBridge } from "underwritten-mcp";
+import { underwrittenBridgePortRange } from "underwritten-mcp/contract";
 
-- explicit `sessionId` tool targeting
-- richer bridge diagnostics and per-session inspection
-- optional Streamable HTTP exposure in addition to `stdio`
-- stronger persisted pairing state if the product needs cross-restart trust continuity
+const bridge = await startUnderwrittenBridge({
+  connectStdio: true,
+  portRange: underwrittenBridgePortRange,
+});
+```
+
+## Local Development In This Monorepo
+
+Install dependencies:
+
+```bash
+vp install
+```
+
+Run the website:
+
+```bash
+vp run website#dev
+```
+
+Run the bridge from source in another terminal:
+
+```bash
+vp dlx tsx apps/mcp/src/cli.ts
+```
+
+Build the package:
+
+```bash
+vp run mcp#build
+```
+
+If you want to run the built entrypoint directly:
+
+```bash
+node apps/mcp/dist/cli.js
+```
+
+## Validation
+
+Run repo checks:
+
+```bash
+vp check
+vp test
+```
+
+Run the package build:
+
+```bash
+vp run mcp#build
+```
+
+## Monorepo Context
+
+- `apps/mcp`: publishable MCP bridge package
+- `apps/mcp/src/contract.ts`: shared protocol types and markdown edit helpers
+- `apps/website`: Underwritten web app that discovers, pairs with, and drives the bridge
+
+## License
+
+MIT
