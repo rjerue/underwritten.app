@@ -4,6 +4,8 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { FileStorageMode } from "../lib/file-system";
 import type { BridgePanelState } from "../mcp/bridge-client";
 import type { SidebarSide } from "./file-sidebar";
+import { McpClientSetup } from "./mcp-client-setup";
+import { mcpInstructions, type McpClient } from "./mcp-instructions";
 import { Button } from "./ui/button";
 
 export type FontPreset = {
@@ -41,7 +43,7 @@ type SettingsDialogProps = {
   onRequestNativeFolder: () => void;
   onPageWidthModeChange: (mode: PageWidthMode) => void;
   onRefreshBridge: () => void;
-  onRequestConfigCopy: () => void;
+  onRequestConfigCopy: (code: string) => void;
   onSidebarSideChange: (side: SidebarSide) => void;
   onSettingsChange: (settings: AppearanceSettings) => void;
   onStorageModeChange: (mode: FileStorageMode) => void;
@@ -140,6 +142,7 @@ export function SettingsDialog({
     layout: false,
     storage: false,
   });
+  const [selectedMcpClient, setSelectedMcpClient] = useState<McpClient>("codex");
 
   useEffect(() => {
     if (!open) return;
@@ -355,8 +358,9 @@ export function SettingsDialog({
                         Enable MCP Integration
                       </div>
                       <div className="mt-1 text-sm text-muted-foreground">
-                        When turned off, Underwritten stops localhost bridge discovery, pairing, and
-                        action polling in this browser.
+                        Off by default. When enabled, Underwritten looks for its local MCP bridge on
+                        this device. Your browser may show a permission prompt before allowing that
+                        connection.
                       </div>
                     </div>
 
@@ -432,38 +436,31 @@ export function SettingsDialog({
                   ) : null}
                 </div>
 
-                <div className="rounded-xl border border-border bg-background p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium text-foreground">MCP Config</div>
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        Users only need one MCP server entry. The package bootstraps the localhost
-                        bridge automatically.
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
+                <McpClientSetup
+                  actions={
+                    <>
                       <Button
                         disabled={!mcpEnabled}
                         onClick={onRefreshBridge}
                         type="button"
                         variant="outline"
                       >
-                        Reconnect
+                        Retry Discovery
                       </Button>
-                      <Button onClick={onRequestConfigCopy} type="button" variant="outline">
+                      <Button
+                        onClick={() => onRequestConfigCopy(mcpInstructions[selectedMcpClient].code)}
+                        type="button"
+                        variant="outline"
+                      >
                         Copy Config
                       </Button>
-                    </div>
-                  </div>
-
-                  <textarea
-                    className="mt-4 min-h-40 w-full rounded-xl border border-border bg-muted/30 px-3 py-3 font-mono text-xs text-foreground outline-none"
-                    data-testid="mcp-config-snippet"
-                    readOnly
-                    value={bridgePanel.configSnippet}
-                  />
-                </div>
+                    </>
+                  }
+                  codeTestId="mcp-config-snippet"
+                  onClientChange={setSelectedMcpClient}
+                  selectId="settings-mcp-client-select"
+                  selectedClient={selectedMcpClient}
+                />
               </div>
             </CollapsibleSection>
 
@@ -656,6 +653,22 @@ export function SettingsDialog({
                     );
                   })}
                 </div>
+
+                {!nativeFolderSupported ? (
+                  <div className="rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground">
+                    Native folder access depends on the File System Access API, which is not
+                    available in every browser.{" "}
+                    <a
+                      className="font-medium text-foreground underline underline-offset-4"
+                      href="https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker"
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      See browser support on MDN
+                    </a>
+                    .
+                  </div>
+                ) : null}
 
                 <div className="rounded-xl border border-border bg-background p-4">
                   <div className="flex items-start justify-between gap-4">

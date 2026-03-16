@@ -2567,13 +2567,13 @@ export function EditorPage() {
     getSessionState: bridgeSessionState,
   });
 
-  const copyMcpConfigSnippet = useCallback(async () => {
+  const copyMcpConfigSnippet = useCallback(async (configSnippet: string) => {
     try {
-      await navigator.clipboard.writeText(bridgePanel.configSnippet);
+      await navigator.clipboard.writeText(configSnippet);
     } catch {
       // Ignore clipboard failures in restricted contexts.
     }
-  }, [bridgePanel.configSnippet]);
+  }, []);
 
   const insertEmbeddedBlockAtSelection = useCallback(
     (placeholder: string) => {
@@ -4361,8 +4361,8 @@ export function EditorPage() {
           onRequestNativeFolder={() => {
             void chooseNativeFolder();
           }}
-          onRequestConfigCopy={() => {
-            void copyMcpConfigSnippet();
+          onRequestConfigCopy={(configSnippet) => {
+            void copyMcpConfigSnippet(configSnippet);
           }}
           onSidebarSideChange={setSidebarSide}
           onSettingsChange={setAppearanceSettings}

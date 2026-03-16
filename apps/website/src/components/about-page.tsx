@@ -1,65 +1,10 @@
 import { useState } from "react";
 
-type McpClient = "claude-code" | "codex" | "kiro" | "opencode";
-
-const mcpInstructions: Record<
-  McpClient,
-  {
-    code: string;
-    description: string;
-  }
-> = {
-  "claude-code": {
-    code: `{
-  "mcpServers": {
-    "underwritten": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "underwritten-mcp"]
-    }
-  }
-}`,
-    description:
-      "Add this to a project-level .mcp.json file in Claude Code. Anthropic also supports adding the same config through the Claude Code MCP commands.",
-  },
-  codex: {
-    code: "codex mcp add underwritten -- npx -y underwritten-mcp",
-    description:
-      "Run this once in your terminal to register Underwritten as a local MCP server in Codex.",
-  },
-  kiro: {
-    code: `{
-  "mcpServers": {
-    "underwritten": {
-      "command": "npx",
-      "args": ["-y", "underwritten-mcp"],
-      "disabled": false
-    }
-  }
-}`,
-    description:
-      "Add this to .kiro/settings/mcp.json for the current workspace or ~/.kiro/settings/mcp.json for all workspaces.",
-  },
-  opencode: {
-    code: `{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "underwritten": {
-      "type": "local",
-      "command": ["npx", "-y", "underwritten-mcp"],
-      "enabled": true
-    }
-  }
-}`,
-    description:
-      "Add this to ~/.config/opencode/opencode.json or a project-level opencode.json file.",
-  },
-};
+import { McpClientSetup } from "./mcp-client-setup";
+import type { McpClient } from "./mcp-instructions";
 
 export function AboutPage() {
   const [selectedMcpClient, setSelectedMcpClient] = useState<McpClient>("codex");
-  const selectedInstructions = mcpInstructions[selectedMcpClient];
-
   return (
     <article
       className="rounded-[2rem] border border-border/80 bg-gradient-to-br from-background via-background to-muted/40 px-6 py-8 shadow-sm sm:px-8"
@@ -119,35 +64,14 @@ export function AboutPage() {
             Choose your MCP client and use the matching setup. The local bridge bootstraps itself
             and pairs with Underwritten automatically after the client starts it.
           </p>
-          <div className="space-y-2">
-            <label
-              className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
-              htmlFor="mcp-client-select"
-            >
-              MCP Client
-            </label>
-            <select
-              className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-foreground/30"
-              data-testid="mcp-client-select"
-              id="mcp-client-select"
-              onChange={(event) => setSelectedMcpClient(event.target.value as McpClient)}
-              value={selectedMcpClient}
-            >
-              <option value="claude-code">Claude Code</option>
-              <option value="codex">Codex</option>
-              <option value="kiro">Kiro</option>
-              <option value="opencode">OpenCode</option>
-            </select>
-          </div>
-          <p
-            className="text-sm leading-6 text-muted-foreground"
-            data-testid="mcp-client-description"
-          >
-            {selectedInstructions.description}
-          </p>
-          <pre className="overflow-x-auto rounded-xl border border-border/70 bg-muted/50 p-4 text-xs leading-6 text-foreground">
-            <code data-testid="mcp-client-config">{selectedInstructions.code}</code>
-          </pre>
+          <McpClientSetup
+            codeTestId="mcp-client-config"
+            descriptionTestId="mcp-client-description"
+            onClientChange={setSelectedMcpClient}
+            selectId="mcp-client-select"
+            selectTestId="mcp-client-select"
+            selectedClient={selectedMcpClient}
+          />
           <p className="text-sm leading-6 text-muted-foreground">
             After adding the setup above, open Underwritten and check{" "}
             <span className="font-medium text-foreground">Settings → MCP Bridge</span> if you want

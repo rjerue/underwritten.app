@@ -319,7 +319,7 @@ test.describe("editor core flows", () => {
           autosaveEnabled: false,
           currentFileName: null,
           lastSavedFingerprint: null,
-          mcpEnabled: true,
+          mcpEnabled: false,
           pageWidthMode: "fill",
           showLineNumbers: false,
           sidebarCollapsed: false,
@@ -384,7 +384,7 @@ test.describe("editor core flows", () => {
           autosaveEnabled: false,
           currentFileName: null,
           lastSavedFingerprint: null,
-          mcpEnabled: true,
+          mcpEnabled: false,
           pageWidthMode: "responsive",
           showLineNumbers: true,
           sidebarCollapsed: false,
@@ -656,24 +656,23 @@ test.describe("editor core flows", () => {
       .toBe("Autosaved content");
   });
 
-  test("mcp integration can be turned off from settings and persists across reload", async ({
+  test("mcp integration can be turned on from settings and persists across reload", async ({
     page,
   }) => {
     await gotoEditor(page, createDraft(["MCP toggle"]));
 
     await page.getByTestId("open-settings").click();
     await page.getByTestId("settings-section-bridge").click();
-    await expect(page.getByTestId("mcp-enabled-toggle")).toHaveAttribute("aria-checked", "true");
-
-    await page.getByTestId("mcp-enabled-toggle").click();
     await expect(page.getByTestId("mcp-enabled-toggle")).toHaveAttribute("aria-checked", "false");
     await expect(page.getByText("MCP integration is turned off")).toBeVisible();
+
+    await page.getByTestId("mcp-enabled-toggle").click();
+    await expect(page.getByTestId("mcp-enabled-toggle")).toHaveAttribute("aria-checked", "true");
 
     await page.reload();
     await page.getByTestId("open-settings").click();
     await page.getByTestId("settings-section-bridge").click();
-    await expect(page.getByTestId("mcp-enabled-toggle")).toHaveAttribute("aria-checked", "false");
-    await expect(page.getByText("MCP integration is turned off")).toBeVisible();
+    await expect(page.getByTestId("mcp-enabled-toggle")).toHaveAttribute("aria-checked", "true");
   });
 
   test("clean files auto-update when the on-disk version changes", async ({ page }) => {

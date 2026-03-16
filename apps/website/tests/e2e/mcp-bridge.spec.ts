@@ -24,6 +24,7 @@ async function setBridgePortOverride(page: Page, port: number) {
 
 async function waitForBridgeUi(page: Page) {
   await openBridgePanel(page);
+  await page.getByTestId("mcp-enabled-toggle").click();
   await expect(page.getByText("Connected to 1 localhost bridge")).toBeVisible({
     timeout: 15_000,
   });
@@ -50,7 +51,9 @@ test.describe("mcp bridge integration", () => {
     await gotoEditor(page, createDraft(["Bridge test draft"], { title: "Bridge Draft" }));
 
     await waitForBridgeUi(page);
-    await expect(page.getByTestId("mcp-config-snippet")).toContainText('"command": "npx"');
+    await expect(page.getByTestId("mcp-config-snippet")).toContainText(
+      "codex mcp add underwritten -- npx -y underwritten-mcp",
+    );
     await page.keyboard.press("Escape");
     await expect
       .poll(async () => {

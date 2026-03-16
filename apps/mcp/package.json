@@ -3,6 +3,9 @@
   "version": "0.0.2",
   "private": false,
   "license": "MIT",
+  "repository": {
+    "url": "https://github.com/rjerue/underwritten.app"
+  },
   "bin": {
     "underwritten-mcp": "./dist/cli.js"
   },
