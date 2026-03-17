@@ -4,6 +4,7 @@ packages:
   - tools/*
 
 catalog:
+  "@cloudflare/vite-plugin": ^1.29.0
   "@playwright/test": ^1.58.2
   "@types/node": ^24.12.0
   fflate: ^0.8.2
@@ -13,6 +14,7 @@ catalog:
   vite: npm:@voidzero-dev/vite-plus-core@latest
   vite-plus: latest
   vitest: npm:@voidzero-dev/vite-plus-test@latest
+  wrangler: 4.74.0
 
 catalogMode: prefer
 overrides:
