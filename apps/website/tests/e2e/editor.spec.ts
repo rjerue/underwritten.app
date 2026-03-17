@@ -824,6 +824,9 @@ test.describe("editor core flows", () => {
 
     const sidebar = page.getByTestId("file-sidebar");
     await expect(sidebar).toHaveAttribute("data-mobile-layout", "drawer");
+    await expect(sidebar).toHaveAttribute("data-collapsed", "true");
+
+    await page.getByTestId("sidebar-toggle").click();
     await expect(sidebar).toHaveAttribute("data-collapsed", "false");
 
     const expandedBottomInset = await sidebar.evaluate((node) => {

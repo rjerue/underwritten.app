@@ -882,9 +882,17 @@ export function EditorPage() {
   const [showLineNumbers, setShowLineNumbers] = useState(
     initialWorkspace?.showLineNumbers ?? defaultShowLineNumbers,
   );
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    initialWorkspace?.sidebarCollapsed ?? defaultSidebarCollapsed,
-  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof initialWorkspace?.sidebarCollapsed === "boolean") {
+      return initialWorkspace.sidebarCollapsed;
+    }
+
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(max-width: 1023px)").matches;
+    }
+
+    return defaultSidebarCollapsed;
+  });
   const [fileStorageMode, setFileStorageMode] = useState<FileStorageMode>(
     initialWorkspace?.storageMode ?? defaultStorageMode,
   );
