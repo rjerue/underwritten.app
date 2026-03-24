@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 
 import { afterEach, beforeEach, describe, expect, test } from "vite-plus/test";
 
-import { type BridgeSessionState } from "./contract.js";
+import { type BridgeSessionState } from "underwritten-bridge-contract";
 
 import { startUnderwrittenBridge, type StartedUnderwrittenBridge } from "./index.js";
 
@@ -19,7 +19,7 @@ async function getAvailablePort() {
         return;
       }
 
-      probe.close((error) => {
+      probe.close((error?: Error) => {
         if (error) {
           reject(error);
           return;
@@ -107,7 +107,6 @@ describe("underwritten bridge service", () => {
   beforeEach(async () => {
     const port = await getAvailablePort();
     startedBridge = await startUnderwrittenBridge({
-      connectStdio: false,
       port,
     });
   });

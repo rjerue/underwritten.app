@@ -33,7 +33,7 @@ export function McpClientSetup({
           className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
           htmlFor={selectId}
         >
-          MCP Client
+          Integration Type
         </label>
         <select
           className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-foreground/30"

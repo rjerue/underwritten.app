@@ -29,13 +29,14 @@ export function AboutPage() {
             your notes.
           </p>
           <p>
-            MCP support follows the same local-first model. The MCP server runs as a local companion
-            process on your machine, the app talks to it over localhost, and the only thing that
-            leaves your machine is whatever model inference your MCP client sends to the model
-            provider you chose.
+            Agent support follows the same local-first model. A local bridge process runs on your
+            machine to connect Underwritten with your tools. You can interact with this bridge using
+            either the **Underwritten CLI** or an **MCP client**. The app talks to the bridge over
+            localhost, and the only thing that leaves your machine is whatever model inference your
+            agent sends to the provider you chose.
           </p>
           <p>
-            The editor and the MCP bridge are open source. You can inspect the full source at{" "}
+            The editor and the bridge are open source. You can inspect the full source at{" "}
             <a
               className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground/80"
               href="https://github.com/rjerue/underwritten.app"
@@ -59,10 +60,11 @@ export function AboutPage() {
         </div>
 
         <div className="mt-10 space-y-4 rounded-2xl border border-border/70 bg-background/70 p-5">
-          <h3 className="text-lg font-semibold text-foreground">Using MCP</h3>
+          <h3 className="text-lg font-semibold text-foreground">Using Agents & MCP</h3>
           <p className="text-sm leading-6 text-muted-foreground">
-            Choose your MCP client and use the matching setup. The local bridge bootstraps itself
-            and pairs with Underwritten automatically after the client starts it.
+            The Agent Bridge is a single local service that supports both terminal-based CLI
+            commands and MCP-based tools. When you use the CLI or an MCP client, the bridge
+            bootstraps itself and pairs with Underwritten automatically.
           </p>
           <McpClientSetup
             codeTestId="mcp-client-config"
@@ -74,7 +76,7 @@ export function AboutPage() {
           />
           <p className="text-sm leading-6 text-muted-foreground">
             After adding the setup above, open Underwritten and check{" "}
-            <span className="font-medium text-foreground">Settings → MCP Bridge</span> if you want
+            <span className="font-medium text-foreground">Settings → Agent Bridge</span> if you want
             to confirm that the local bridge is connected.
           </p>
         </div>

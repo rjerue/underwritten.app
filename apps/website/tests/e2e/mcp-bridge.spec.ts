@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { startUnderwrittenBridge, type StartedUnderwrittenBridge } from "../../../mcp/src/index.ts";
+import { startUnderwrittenBridge, type StartedUnderwrittenBridge } from "underwritten-bridge";
 import { createDraft, gotoEditor, rawMode } from "./helpers";
 
 async function waitForBridgeSession(bridge: StartedUnderwrittenBridge) {
@@ -35,7 +35,6 @@ test.describe("mcp bridge integration", () => {
 
   test.beforeEach(async () => {
     bridge = await startUnderwrittenBridge({
-      connectStdio: false,
       portRange: { end: 0, start: 0 },
     });
   });

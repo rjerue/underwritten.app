@@ -33,12 +33,12 @@ type SettingsDialogProps = {
   fontPresets: FontPreset[];
   hasSavedFile: boolean;
   layoutSettings: LayoutSettings;
-  mcpEnabled: boolean;
+  bridgeEnabled: boolean;
   nativeFolderName: string | null;
   nativeFolderSupported: boolean;
   onAutosaveEnabledChange: (enabled: boolean) => void;
   onLayoutSettingsChange: (settings: LayoutSettings) => void;
-  onMcpEnabledChange: (enabled: boolean) => void;
+  onBridgeEnabledChange: (enabled: boolean) => void;
   onOpenChange: (open: boolean) => void;
   onRequestNativeFolder: () => void;
   onPageWidthModeChange: (mode: PageWidthMode) => void;
@@ -113,19 +113,19 @@ function getPrimaryFontName(fontFamily: string) {
 export function SettingsDialog({
   autosaveEnabled,
   bridgePanel,
+  bridgeEnabled,
   fontPresets,
   hasSavedFile,
   layoutSettings,
-  mcpEnabled,
   nativeFolderName,
   nativeFolderSupported,
   onAutosaveEnabledChange,
   onLayoutSettingsChange,
-  onMcpEnabledChange,
+  onBridgeEnabledChange,
   onOpenChange,
+  onRequestNativeFolder,
   onPageWidthModeChange,
   onRefreshBridge,
-  onRequestNativeFolder,
   onRequestConfigCopy,
   onSidebarSideChange,
   onSettingsChange,
@@ -339,7 +339,7 @@ export function SettingsDialog({
             </CollapsibleSection>
 
             <CollapsibleSection
-              description="Local MCP bridge discovery, connection state, and the single config snippet users need."
+              description="Local agent bridge discovery, connection state, and configuration for CLI or MCP clients."
               onToggle={() =>
                 setOpenSections((previous) => ({
                   ...previous,
@@ -348,36 +348,36 @@ export function SettingsDialog({
               }
               open={openSections.bridge}
               testId="settings-section-bridge"
-              title="MCP Bridge"
+              title="Agent Bridge"
             >
               <div className="space-y-3">
                 <div className="rounded-xl border border-border bg-background p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-sm font-medium text-foreground">
-                        Enable MCP Integration
+                        Enable Agent Integration
                       </div>
                       <div className="mt-1 text-sm text-muted-foreground">
-                        Off by default. When enabled, Underwritten looks for its local MCP bridge on
+                        Off by default. When enabled, Underwritten looks for its local bridge on
                         this device. Your browser may show a permission prompt before allowing that
                         connection.
                       </div>
                     </div>
 
                     <button
-                      aria-checked={mcpEnabled}
+                      aria-checked={bridgeEnabled}
                       className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors ${
-                        mcpEnabled ? "border-foreground bg-foreground" : "border-border bg-muted"
+                        bridgeEnabled ? "border-foreground bg-foreground" : "border-border bg-muted"
                       }`}
                       data-testid="mcp-enabled-toggle"
-                      onClick={() => onMcpEnabledChange(!mcpEnabled)}
+                      onClick={() => onBridgeEnabledChange(!bridgeEnabled)}
                       role="switch"
                       type="button"
                     >
-                      <span className="sr-only">Toggle MCP integration</span>
+                      <span className="sr-only">Toggle agent integration</span>
                       <span
                         className={`inline-block h-5 w-5 rounded-full bg-background transition-transform ${
-                          mcpEnabled ? "translate-x-6" : "translate-x-1"
+                          bridgeEnabled ? "translate-x-6" : "translate-x-1"
                         }`}
                       />
                     </button>
@@ -440,7 +440,7 @@ export function SettingsDialog({
                   actions={
                     <>
                       <Button
-                        disabled={!mcpEnabled}
+                        disabled={!bridgeEnabled}
                         onClick={onRefreshBridge}
                         type="button"
                         variant="outline"

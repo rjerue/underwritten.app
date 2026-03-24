@@ -7,7 +7,7 @@ import {
   type BridgeSessionState,
   type MarkdownEdit,
   type UnderwrittenBridgeAction,
-} from "../../../mcp/src/contract";
+} from "underwritten-bridge-contract";
 import {
   createEditor,
   type Descendant,
@@ -899,7 +899,9 @@ export function EditorPage() {
   const [autosaveEnabled, setAutosaveEnabled] = useState(
     initialWorkspace?.autosaveEnabled ?? defaultAutosaveEnabled,
   );
-  const [mcpEnabled, setMcpEnabled] = useState(initialWorkspace?.mcpEnabled ?? defaultMcpEnabled);
+  const [bridgeEnabled, setBridgeEnabled] = useState(
+    initialWorkspace?.bridgeEnabled ?? defaultMcpEnabled,
+  );
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(
     initialWorkspace?.currentFileName ?? null,
   );
@@ -2571,7 +2573,7 @@ export function EditorPage() {
 
   const { panel: bridgePanel, refresh: refreshBridgePanel } = useUnderwrittenBridge({
     applyAction: handleBridgeAction,
-    enabled: mcpEnabled,
+    enabled: bridgeEnabled,
     getSessionState: bridgeSessionState,
   });
 
@@ -3903,7 +3905,7 @@ export function EditorPage() {
       autosaveEnabled,
       currentFileName: currentFilePath,
       lastSavedFingerprint,
-      mcpEnabled,
+      bridgeEnabled,
       pageWidthMode,
       showLineNumbers,
       sidebarCollapsed,
@@ -3915,7 +3917,7 @@ export function EditorPage() {
     currentFilePath,
     fileStorageMode,
     lastSavedFingerprint,
-    mcpEnabled,
+    bridgeEnabled,
     pageWidthMode,
     showLineNumbers,
     sidebarCollapsed,
@@ -4350,7 +4352,7 @@ export function EditorPage() {
           fontPresets={fontPresets}
           hasSavedFile={currentFilePath !== null}
           layoutSettings={{ showLineNumbers }}
-          mcpEnabled={mcpEnabled}
+          bridgeEnabled={bridgeEnabled}
           nativeFolderName={nativeDirectoryHandle?.name ?? null}
           nativeFolderSupported={nativeFolderSupported}
           open={showSettingsDialog}
@@ -4362,7 +4364,7 @@ export function EditorPage() {
           onLayoutSettingsChange={(settings) => {
             setShowLineNumbers(settings.showLineNumbers);
           }}
-          onMcpEnabledChange={setMcpEnabled}
+          onBridgeEnabledChange={setBridgeEnabled}
           onOpenChange={setShowSettingsDialog}
           onPageWidthModeChange={setPageWidthMode}
           onRefreshBridge={refreshBridgePanel}

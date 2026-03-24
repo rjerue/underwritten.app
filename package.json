@@ -9,8 +9,10 @@
   "type": "module",
   "scripts": {
     "ready": "vp fmt && vp lint && vp run test -r && vp run build -r",
+    "build": "vp run build -r",
     "dev": "vp run website#dev",
     "prepare": "vp config",
+    "publish-packages": "./scripts/publish.sh",
     "test:e2e": "vp run website#test:e2e",
     "test:e2e:headed": "vp run website#test:e2e:headed",
     "test:e2e:ui": "vp run website#test:e2e:ui"

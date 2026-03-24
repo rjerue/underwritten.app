@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
-import { underwrittenBridgePortRange } from "./contract.js";
+import { underwrittenBridgePortRange } from "underwritten-bridge-contract";
 
-import { startUnderwrittenBridge } from "./index.js";
+import { startUnderwrittenMcp } from "./index.js";
 
-const startedBridge = await startUnderwrittenBridge({
-  connectStdio: true,
+const startedBridge = await startUnderwrittenMcp({
   portRange: underwrittenBridgePortRange,
 });
 

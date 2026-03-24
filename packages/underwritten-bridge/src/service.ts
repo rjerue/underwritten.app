@@ -27,7 +27,7 @@ import {
   underwrittenBridgeApiVersion,
   underwrittenBridgePollIntervalMs,
   underwrittenBridgeSessionTtlMs,
-} from "./contract.js";
+} from "underwritten-bridge-contract";
 
 type PairingRecord = {
   createdAt: number;
@@ -51,7 +51,7 @@ type SessionRecord = {
   token: string;
 };
 
-type ToolName =
+export type ToolName =
   | "apply_markdown_edits"
   | "create_file"
   | "create_folder"
@@ -239,12 +239,11 @@ export class UnderwrittenBridgeService {
 
       clearTimeout(pending.timeoutId);
 
-      if (result.ok) {
+      if (result.ok === true) {
         pending.resolve(result.result);
-        continue;
+      } else {
+        pending.reject(new Error(result.error.message));
       }
-
-      pending.reject(new Error(result.error.message));
     }
 
     const queuedActions = record.pendingActions.map((pending) => pending.action);

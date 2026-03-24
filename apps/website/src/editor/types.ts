@@ -48,7 +48,7 @@ export type WorkspaceSettings = {
   autosaveEnabled: boolean;
   currentFileName: string | null;
   lastSavedFingerprint: string | null;
-  mcpEnabled: boolean;
+  bridgeEnabled: boolean;
   pageWidthMode: PageWidthMode;
   showLineNumbers: boolean;
   sidebarCollapsed: boolean;

@@ -5,13 +5,15 @@ import {
   type UnderwrittenBridgeDisconnectRequest,
   type UnderwrittenBridgePairRequest,
   type UnderwrittenBridgeSessionSyncRequest,
-} from "./contract.js";
+  type BridgeSessionState,
+} from "underwritten-bridge-contract";
 import * as z from "zod/v4";
 
 import {
   isAllowedUnderwrittenOrigin,
   type UnderwrittenBridgeService,
   UnderwrittenBridgeError,
+  type ToolName,
 } from "./service.js";
 
 const pairRequestSchema = z.object({
@@ -56,18 +58,23 @@ const actionResultSchema = z.discriminatedUnion("ok", [
 
 const syncRequestSchema = z.object({
   completedActions: z.array(actionResultSchema).optional(),
-  session: sessionStateSchema,
-}) satisfies z.ZodType<UnderwrittenBridgeSessionSyncRequest>;
+  session: sessionStateSchema as z.ZodType<BridgeSessionState>,
+});
 
 const disconnectRequestSchema = z.object({
   sessionId: z.string().min(1),
 }) satisfies z.ZodType<UnderwrittenBridgeDisconnectRequest>;
 
+const cliExecuteRequestSchema = z.object({
+  args: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().min(1),
+});
+
 function readBody(request: IncomingMessage) {
   return new Promise<string>((resolve, reject) => {
-    const chunks: Buffer[] = [];
+    const chunks: Uint8Array[] = [];
 
-    request.on("data", (chunk: Buffer) => {
+    request.on("data", (chunk: Uint8Array) => {
       chunks.push(chunk);
     });
     request.on("end", () => {
@@ -146,7 +153,7 @@ function sendError(response: ServerResponse, error: unknown, origin: string | nu
 }
 
 export async function createHttpServer(service: UnderwrittenBridgeService, port: number) {
-  const server = createServer(async (request, response) => {
+  const server = createServer(async (request: IncomingMessage, response: ServerResponse) => {
     const origin = getOrigin(request);
     const method = request.method ?? "GET";
     const url = new URL(request.url ?? "/", `http://127.0.0.1:${port}`);
@@ -184,6 +191,18 @@ export async function createHttpServer(service: UnderwrittenBridgeService, port:
         return;
       }
 
+      if (method === "POST" && url.pathname === "/cli/execute") {
+        const body = cliExecuteRequestSchema.parse(JSON.parse(await readBody(request)));
+        const result = await service.callTool(body.name as ToolName, body.args ?? {});
+        sendJson(response, 200, result, origin);
+        return;
+      }
+
+      if (method === "GET" && url.pathname === "/cli/health") {
+        sendJson(response, 200, { ok: true, bridgeId: service.bridgeId }, origin);
+        return;
+      }
+
       const token = getBearerToken(request);
       if (!token) {
         throw new UnderwrittenBridgeError(
@@ -198,7 +217,9 @@ export async function createHttpServer(service: UnderwrittenBridgeService, port:
       }
 
       if (method === "POST" && url.pathname === "/session/sync") {
-        const body = syncRequestSchema.parse(JSON.parse(await readBody(request)));
+        const body = syncRequestSchema.parse(
+          JSON.parse(await readBody(request)),
+        ) as UnderwrittenBridgeSessionSyncRequest;
         sendJson(response, 200, service.syncSession(origin, token, body), origin);
         return;
       }

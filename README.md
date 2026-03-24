@@ -5,9 +5,23 @@ Underwritten is a browser-first markdown editor with a companion MCP bridge. The
 ## Apps
 
 - `apps/website`: the Underwritten web app and PWA
+- `apps/cli`: the `underwritten` CLI for agent and terminal use
 - `apps/mcp`: the published `underwritten-mcp` package
 
-The MCP package is documented in [`apps/mcp/README.md`](./apps/mcp/README.md).
+## Packages
+
+- `packages/underwritten-bridge`: shared localhost bridge runtime
+- `packages/underwritten-bridge-contract`: shared bridge protocol types and helpers
+
+## Releasing
+
+Releases are currently handled manually by updating the version numbers in `package.json` files and pushing to `main`. CI will automatically detect new versions and publish them to npm via OIDC.
+
+To publish manually from your local machine (requires npm login):
+
+```bash
+npm run publish-packages
+```
 
 ## Development
 

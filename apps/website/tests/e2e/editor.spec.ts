@@ -176,7 +176,7 @@ test.describe("editor core flows", () => {
         "Underwritten does not have its own backend with independent access to your notes.",
       ),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Using MCP" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Using Agents & MCP" })).toBeVisible();
     await expect(page.getByTestId("mcp-client-select")).toHaveValue("codex");
     await expect(
       page.getByText("codex mcp add underwritten -- npx -y underwritten-mcp"),
@@ -319,7 +319,7 @@ test.describe("editor core flows", () => {
           autosaveEnabled: false,
           currentFileName: null,
           lastSavedFingerprint: null,
-          mcpEnabled: false,
+          bridgeEnabled: false,
           pageWidthMode: "fill",
           showLineNumbers: false,
           sidebarCollapsed: false,
@@ -384,7 +384,7 @@ test.describe("editor core flows", () => {
           autosaveEnabled: false,
           currentFileName: null,
           lastSavedFingerprint: null,
-          mcpEnabled: false,
+          bridgeEnabled: false,
           pageWidthMode: "responsive",
           showLineNumbers: true,
           sidebarCollapsed: false,

@@ -123,7 +123,9 @@ function isWorkspaceSettings(value: unknown): value is WorkspaceSettings {
       typeof settings.autosaveEnabled === "undefined") &&
     (settings.currentFileName === null || typeof settings.currentFileName === "string") &&
     (settings.lastSavedFingerprint === null || typeof settings.lastSavedFingerprint === "string") &&
-    (typeof settings.mcpEnabled === "boolean" || typeof settings.mcpEnabled === "undefined") &&
+    (typeof settings.bridgeEnabled === "boolean" ||
+      typeof settings.bridgeEnabled === "undefined" ||
+      typeof (settings as any).mcpEnabled === "boolean") &&
     (settings.pageWidthMode === "fill" ||
       settings.pageWidthMode === "responsive" ||
       typeof settings.pageWidthMode === "undefined") &&
@@ -152,10 +154,12 @@ export function loadWorkspaceSettings(): WorkspaceSettings | null {
         typeof parsedWorkspace.autosaveEnabled === "boolean"
           ? parsedWorkspace.autosaveEnabled
           : defaultAutosaveEnabled,
-      mcpEnabled:
-        typeof parsedWorkspace.mcpEnabled === "boolean"
-          ? parsedWorkspace.mcpEnabled
-          : defaultMcpEnabled,
+      bridgeEnabled:
+        typeof parsedWorkspace.bridgeEnabled === "boolean"
+          ? parsedWorkspace.bridgeEnabled
+          : typeof (parsedWorkspace as any).mcpEnabled === "boolean"
+            ? (parsedWorkspace as any).mcpEnabled
+            : defaultMcpEnabled,
       pageWidthMode:
         parsedWorkspace.pageWidthMode === "fill" || parsedWorkspace.pageWidthMode === "responsive"
           ? parsedWorkspace.pageWidthMode

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { applyMarkdownTextEdits, buildMarkdownOutline } from "./contract.js";
+import { applyMarkdownTextEdits, buildMarkdownOutline } from "./index.js";
 
 describe("contract helpers", () => {
   test("applies sequential markdown edits", () => {

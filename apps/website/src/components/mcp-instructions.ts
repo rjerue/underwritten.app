@@ -1,4 +1,4 @@
-export type McpClient = "claude-code" | "codex" | "kiro" | "opencode";
+export type McpClient = "cli" | "claude-code" | "codex" | "kiro" | "opencode";
 
 export type McpInstruction = {
   code: string;
@@ -7,6 +7,12 @@ export type McpInstruction = {
 };
 
 export const mcpInstructions: Record<McpClient, McpInstruction> = {
+  cli: {
+    code: "npm install -g underwritten\nunderwritten document get",
+    description:
+      "Install the Underwritten CLI to interact with your editor session from any terminal or agent shell. The CLI auto-starts a background bridge when used.",
+    label: "CLI (Universal)",
+  },
   "claude-code": {
     code: `{
   "mcpServers": {
@@ -58,4 +64,4 @@ export const mcpInstructions: Record<McpClient, McpInstruction> = {
   },
 };
 
-export const mcpClientOrder: McpClient[] = ["claude-code", "codex", "kiro", "opencode"];
+export const mcpClientOrder: McpClient[] = ["cli", "claude-code", "codex", "kiro", "opencode"];

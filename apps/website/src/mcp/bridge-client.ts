@@ -8,7 +8,9 @@ import {
   underwrittenBridgePollIntervalMs,
   underwrittenBridgePortRange,
   type UnderwrittenBridgeStatusResponse,
-} from "../../../mcp/src/contract";
+} from "underwritten-bridge-contract";
+
+import { Heartbeat } from "./heartbeat";
 
 type BridgeConnectionState = "connected" | "error" | "paired" | "reachable";
 
@@ -407,21 +409,28 @@ export function useUnderwrittenBridge({
       return;
     }
 
-    const discoveryInterval = window.setInterval(() => {
-      void discoverBridges();
-    }, 5_000);
+    const heartbeat = new Heartbeat(underwrittenBridgePollIntervalMs);
+    let tickCount = 0;
 
-    const syncInterval = window.setInterval(() => {
+    heartbeat.addCallback(() => {
+      // 1. Discovery (every 5 seconds, and on the first tick)
+      if (tickCount % Math.max(1, 5000 / underwrittenBridgePollIntervalMs) === 0) {
+        void discoverBridges();
+      }
+      tickCount++;
+
+      // 2. Sync (every second)
       for (const connection of connectionsRef.current) {
         if (connection.browserToken) {
           void syncConnection(connection);
         }
       }
-    }, underwrittenBridgePollIntervalMs);
+    });
+
+    heartbeat.start();
 
     return () => {
-      window.clearInterval(discoveryInterval);
-      window.clearInterval(syncInterval);
+      heartbeat.stop();
     };
   }, [discoverBridges, enabled, syncConnection]);
 
