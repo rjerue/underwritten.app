@@ -30,8 +30,8 @@ jobs:
           cache: true
           run-install: true
 
-      - name: Build website
-        run: vp run website#build
+      - name: Build workspace
+        run: vp run build -r
 
       - name: Verify Cloudflare auth
         working-directory: apps/website
