@@ -22,7 +22,7 @@ async function setBridgePortOverride(page: Page, port: number) {
 async function waitForBridgeUi(page: Page) {
   await openBridgePanel(page);
   await page.getByTestId("mcp-enabled-toggle").click();
-  await expect(page.getByText("Connected to 1 localhost bridge")).toBeVisible({
+  await expect(page.getByText("Connected to local bridge")).toBeVisible({
     timeout: 15_000,
   });
 }

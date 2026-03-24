@@ -58,6 +58,8 @@ import {
   defaultStorageMode,
   defaultTitle,
   fontPresets,
+  initialCodeBlocksValue,
+  initialTablesValue,
   initialValue,
 } from "../editor/constants";
 import { getPageWidthClass, getSidebarDesktopOffsetClass } from "../editor/layout";
@@ -111,6 +113,7 @@ import {
   type FileStorageMode,
   writeFile,
 } from "../lib/file-system";
+import { cn } from "../lib/utils";
 import { useUnderwrittenBridge } from "../mcp/bridge-client";
 
 function triggerBlobDownload(blob: Blob, fileName: string) {
@@ -413,6 +416,37 @@ type ExternalFileConflict = {
   diskMarkdown: string;
   filePath: string;
 };
+
+type BridgeFlashbar = {
+  action: "apply_markdown_edits" | "replace_current_document";
+  detectedAt: number;
+};
+
+function BottomFlashbar({
+  children,
+  className,
+  testId,
+}: {
+  children: ReactNode;
+  className?: string;
+  testId: string;
+}) {
+  return (
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-4"
+      data-testid={testId}
+    >
+      <div
+        className={cn(
+          "pointer-events-auto mx-auto w-full max-w-3xl rounded-2xl border px-4 py-4 shadow-lg backdrop-blur-sm",
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function findTextMatchRanges(text: string, query: string) {
   if (query.length === 0) {
@@ -846,8 +880,8 @@ export function EditorPage() {
   const initialWorkspace = useMemo(() => loadWorkspaceSettings(), []);
   const initialTitle = initialDraft?.title ?? defaultTitle;
   const initialDocumentValue = initialDraft?.value ?? initialValue;
-  const initialCodeBlocks = initialDraft?.codeBlocks ?? [];
-  const initialTables = initialDraft?.tables ?? [];
+  const initialCodeBlocks = initialDraft?.codeBlocks ?? initialCodeBlocksValue;
+  const initialTables = initialDraft?.tables ?? initialTablesValue;
   const initialMarkdown = useMemo(
     () => serializeMarkdown(initialDocumentValue, initialTables, initialCodeBlocks),
     [initialCodeBlocks, initialDocumentValue, initialTables],
@@ -920,6 +954,7 @@ export function EditorPage() {
   const [externalFileConflict, setExternalFileConflict] = useState<ExternalFileConflict | null>(
     null,
   );
+  const [bridgeFlashbar, setBridgeFlashbar] = useState<BridgeFlashbar | null>(null);
   const [lastSavedMarkdown, setLastSavedMarkdown] = useState<string | null>(null);
   const [tableRenderVersion, setTableRenderVersion] = useState(0);
   const [nativeDirectoryHandle, setNativeDirectoryHandle] =
@@ -1194,6 +1229,22 @@ export function EditorPage() {
   }, [externalFileConflict]);
 
   useEffect(() => {
+    if (!bridgeFlashbar) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setBridgeFlashbar((previous) =>
+        previous?.detectedAt === bridgeFlashbar.detectedAt ? null : previous,
+      );
+    }, 120000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [bridgeFlashbar]);
+
+  useEffect(() => {
     setShowTableSelector(false);
   }, [viewMode]);
 
@@ -1250,7 +1301,15 @@ export function EditorPage() {
           ...previous,
           [directoryPath]: [],
         }));
-        setFileError(getErrorMessage(error));
+        if (
+          directoryPath === "" &&
+          effectiveMode === "native-folder" &&
+          effectiveNativeHandle === null
+        ) {
+          setFileError(null);
+        } else {
+          setFileError(getErrorMessage(error));
+        }
       } finally {
         setLoadingDirectoryPaths((previous) => previous.filter((path) => path !== directoryPath));
       }
@@ -1469,9 +1528,6 @@ export function EditorPage() {
 
   const clearExternalFileConflict = useCallback(() => {
     setExternalFileConflict(null);
-    setFileError((previous) =>
-      previous?.startsWith("This file changed on disk.") ? null : previous,
-    );
   }, []);
 
   const loadCurrentFileFromDisk = useCallback(
@@ -1512,9 +1568,6 @@ export function EditorPage() {
         filePath,
       };
     });
-    setFileError(
-      "This file changed on disk. Open the disk version or explicitly allow overwrite before saving.",
-    );
   }, []);
 
   const confirmNavigateAwayFromUnsaved = useCallback(() => {
@@ -2362,6 +2415,13 @@ export function EditorPage() {
       return;
     }
 
+    if (
+      fileStorageMode === "native-folder" &&
+      (!nativeDirectoryReady || nativeDirectoryHandle === null)
+    ) {
+      return;
+    }
+
     let cancelled = false;
 
     const syncCurrentFileWithDisk = async () => {
@@ -2427,10 +2487,11 @@ export function EditorPage() {
     loadCurrentFileFromDisk,
     markExternalFileConflict,
     nativeDirectoryHandle,
+    nativeDirectoryReady,
   ]);
 
   const replaceCurrentDocumentFromBridge = useCallback(
-    async (markdown: string) => {
+    async (markdown: string, action: BridgeFlashbar["action"] = "replace_current_document") => {
       const parsedDocument = parseMarkdownDocument(markdown);
 
       replaceEditorDocument(
@@ -2440,6 +2501,10 @@ export function EditorPage() {
         parsedDocument.codeBlocks,
       );
       setFileError(null);
+      setBridgeFlashbar({
+        action,
+        detectedAt: Date.now(),
+      });
 
       return createBridgeDocumentSnapshot(markdown);
     },
@@ -2449,7 +2514,7 @@ export function EditorPage() {
   const applyMarkdownEditsFromBridge = useCallback(
     async (edits: MarkdownEdit[]) => {
       const nextMarkdown = applyMarkdownTextEdits(currentMarkdown, edits);
-      return await replaceCurrentDocumentFromBridge(nextMarkdown);
+      return await replaceCurrentDocumentFromBridge(nextMarkdown, "apply_markdown_edits");
     },
     [currentMarkdown, replaceCurrentDocumentFromBridge],
   );
@@ -2571,19 +2636,11 @@ export function EditorPage() {
     ],
   );
 
-  const { panel: bridgePanel, refresh: refreshBridgePanel } = useUnderwrittenBridge({
+  const { panel: bridgePanel } = useUnderwrittenBridge({
     applyAction: handleBridgeAction,
     enabled: bridgeEnabled,
     getSessionState: bridgeSessionState,
   });
-
-  const copyMcpConfigSnippet = useCallback(async (configSnippet: string) => {
-    try {
-      await navigator.clipboard.writeText(configSnippet);
-    } catch {
-      // Ignore clipboard failures in restricted contexts.
-    }
-  }, []);
 
   const insertEmbeddedBlockAtSelection = useCallback(
     (placeholder: string) => {
@@ -3929,6 +3986,7 @@ export function EditorPage() {
   const saveBlockedByExternalConflict =
     externalFileConflict !== null && !externalFileConflict.acknowledged;
   const sidebarDesktopOffsetClass = getSidebarDesktopOffsetClass(sidebarSide, sidebarCollapsed);
+  const isInitializingRootDirectory = !("" in treeEntriesByPath);
 
   return (
     <div className="min-h-screen bg-background">
@@ -3942,6 +4000,7 @@ export function EditorPage() {
             expandedDirectories={expandedDirectories}
             folderName={nativeDirectoryHandle?.name ?? null}
             hasUnsavedChanges={hasUnsavedChanges}
+            isInitializingRoot={isInitializingRootDirectory}
             loadingPaths={loadingDirectoryPaths}
             nativeFolderSupported={nativeFolderSupported}
             onChangeFolder={chooseNativeFolder}
@@ -4130,10 +4189,33 @@ export function EditorPage() {
                 </div>
               </div>
 
+              <div className="relative">
+                <EditorContent
+                  codeBlocks={codeBlocks}
+                  currentMarkdown={currentMarkdown}
+                  decorate={decorate}
+                  editor={editor}
+                  onEditorChange={handleEditorChange}
+                  onEditorFocus={handleEditorFocus}
+                  onRawMarkdownChange={handleRawMarkdownChange}
+                  onRawKeyDown={handleRawKeyDown}
+                  onTitleChange={setTitle}
+                  onEditableKeyDown={handleEditableKeyDown}
+                  rawTextareaRef={rawTextareaRef}
+                  renderElement={renderElement}
+                  renderLeaf={renderLeaf}
+                  showLineNumbers={showLineNumbers}
+                  tables={tables}
+                  title={title}
+                  value={value}
+                  viewMode={viewMode}
+                />
+              </div>
+
               {externalFileConflict ? (
-                <div
-                  className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4"
-                  data-testid="disk-conflict-banner"
+                <BottomFlashbar
+                  className="border-amber-500/30 bg-background/92 text-foreground"
+                  testId="disk-conflict-banner"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">
@@ -4172,9 +4254,6 @@ export function EditorPage() {
                                 }
                               : previous,
                           );
-                          setFileError((previous) =>
-                            previous?.startsWith("This file changed on disk.") ? null : previous,
-                          );
                         }}
                         type="button"
                         variant={externalFileConflict.acknowledged ? "secondary" : "default"}
@@ -4185,31 +4264,37 @@ export function EditorPage() {
                       </Button>
                     </div>
                   </div>
-                </div>
+                </BottomFlashbar>
+              ) : bridgeFlashbar ? (
+                <BottomFlashbar
+                  className="border-emerald-500/25 bg-background/88 text-foreground"
+                  testId="bridge-update-flashbar"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        {bridgeFlashbar.action === "apply_markdown_edits"
+                          ? "Bridge edits applied."
+                          : "Document updated from the bridge."}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {bridgeFlashbar.action === "apply_markdown_edits"
+                          ? "Your connected agent made targeted edits. Review them here when you’re ready."
+                          : "Your connected agent replaced the current document. Review the updated content when you’re ready."}
+                      </p>
+                    </div>
+                    <Button
+                      aria-label="Dismiss bridge update message"
+                      onClick={() => setBridgeFlashbar(null)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                </BottomFlashbar>
               ) : null}
-
-              <div className="relative">
-                <EditorContent
-                  codeBlocks={codeBlocks}
-                  currentMarkdown={currentMarkdown}
-                  decorate={decorate}
-                  editor={editor}
-                  onEditorChange={handleEditorChange}
-                  onEditorFocus={handleEditorFocus}
-                  onRawMarkdownChange={handleRawMarkdownChange}
-                  onRawKeyDown={handleRawKeyDown}
-                  onTitleChange={setTitle}
-                  onEditableKeyDown={handleEditableKeyDown}
-                  rawTextareaRef={rawTextareaRef}
-                  renderElement={renderElement}
-                  renderLeaf={renderLeaf}
-                  showLineNumbers={showLineNumbers}
-                  tables={tables}
-                  title={title}
-                  value={value}
-                  viewMode={viewMode}
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -4367,12 +4452,8 @@ export function EditorPage() {
           onBridgeEnabledChange={setBridgeEnabled}
           onOpenChange={setShowSettingsDialog}
           onPageWidthModeChange={setPageWidthMode}
-          onRefreshBridge={refreshBridgePanel}
           onRequestNativeFolder={() => {
             void chooseNativeFolder();
-          }}
-          onRequestConfigCopy={(configSnippet) => {
-            void copyMcpConfigSnippet(configSnippet);
           }}
           onSidebarSideChange={setSidebarSide}
           onSettingsChange={setAppearanceSettings}

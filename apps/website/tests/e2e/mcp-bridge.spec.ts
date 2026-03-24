@@ -25,7 +25,7 @@ async function setBridgePortOverride(page: Page, port: number) {
 async function waitForBridgeUi(page: Page) {
   await openBridgePanel(page);
   await page.getByTestId("mcp-enabled-toggle").click();
-  await expect(page.getByText("Connected to 1 localhost bridge")).toBeVisible({
+  await expect(page.getByText("Connected to local bridge")).toBeVisible({
     timeout: 15_000,
   });
 }
@@ -69,6 +69,27 @@ test.describe("mcp bridge integration", () => {
 
     await bridge.service.callTool("replace_current_document", {
       markdown: "# MCP Bridge\n\nUpdated from bridge",
+    });
+
+    await expect(page.getByTestId("bridge-update-flashbar")).toBeVisible();
+    await expect(page.getByTestId("bridge-update-flashbar")).toContainText(
+      "Document updated from the bridge.",
+    );
+    const bridgeFlashbarLayout = await page
+      .getByTestId("bridge-update-flashbar")
+      .evaluate((node) => {
+        if (!(node instanceof HTMLElement)) return null;
+        const rect = node.getBoundingClientRect();
+        const style = window.getComputedStyle(node);
+
+        return {
+          bottomInset: Math.round(window.innerHeight - rect.bottom),
+          position: style.position,
+        };
+      });
+    expect(bridgeFlashbarLayout).toEqual({
+      bottomInset: 0,
+      position: "fixed",
     });
 
     await page.getByTestId("mode-raw").click();

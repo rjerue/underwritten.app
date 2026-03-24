@@ -114,4 +114,141 @@ describe("underwritten cli", () => {
       }),
     );
   });
+
+  test("files create command passes path and content", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    mockFetch.mockResolvedValueOnce({ ok: true }); // probeBridge
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true }),
+    }); // executeCommand
+
+    await main(["files", "create", "notes/todo.md", "# todo"]);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/cli/execute"),
+      expect.objectContaining({
+        body: JSON.stringify({
+          name: "create_file",
+          args: {
+            content: "# todo",
+            path: "notes/todo.md",
+          },
+        }),
+      }),
+    );
+  });
+
+  test("files mkdir command passes folder path", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    mockFetch.mockResolvedValueOnce({ ok: true }); // probeBridge
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true }),
+    }); // executeCommand
+
+    await main(["files", "mkdir", "notes/archive"]);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/cli/execute"),
+      expect.objectContaining({
+        body: JSON.stringify({
+          name: "create_folder",
+          args: {
+            path: "notes/archive",
+          },
+        }),
+      }),
+    );
+  });
+
+  test("files move command passes source and destination", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    mockFetch.mockResolvedValueOnce({ ok: true }); // probeBridge
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true }),
+    }); // executeCommand
+
+    await main(["files", "move", "notes/old.md", "notes/new.md"]);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/cli/execute"),
+      expect.objectContaining({
+        body: JSON.stringify({
+          name: "move_path",
+          args: {
+            destinationPath: "notes/new.md",
+            sourcePath: "notes/old.md",
+          },
+        }),
+      }),
+    );
+  });
+
+  test("files delete command passes path and force flag", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    mockFetch.mockResolvedValueOnce({ ok: true }); // probeBridge
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true }),
+    }); // executeCommand
+
+    await main(["files", "delete", "notes/old.md", "--force"]);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/cli/execute"),
+      expect.objectContaining({
+        body: JSON.stringify({
+          name: "delete_path",
+          args: {
+            force: true,
+            path: "notes/old.md",
+          },
+        }),
+      }),
+    );
+  });
+
+  test("document edit command parses edits json", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    mockFetch.mockResolvedValueOnce({ ok: true }); // probeBridge
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true }),
+    }); // executeCommand
+
+    await main([
+      "document",
+      "edit",
+      '[{"type":"replace","target":{"text":"Old"},"newText":"New"}]',
+    ]);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/cli/execute"),
+      expect.objectContaining({
+        body: JSON.stringify({
+          name: "apply_markdown_edits",
+          args: {
+            edits: [{ type: "replace", target: { text: "Old" }, newText: "New" }],
+          },
+        }),
+      }),
+    );
+  });
+
+  test("document edit rejects invalid json", async () => {
+    await expect(main(["document", "edit", "{not-json}"])).rejects.toThrow("process.exit called");
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid edits_json"));
+  });
 });

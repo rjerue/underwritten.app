@@ -6,11 +6,8 @@ import type { McpClient } from "./mcp-instructions";
 export function AboutPage() {
   const [selectedMcpClient, setSelectedMcpClient] = useState<McpClient>("codex");
   return (
-    <article
-      className="rounded-[2rem] border border-border/80 bg-gradient-to-br from-background via-background to-muted/40 px-6 py-8 shadow-sm sm:px-8"
-      data-testid="about-page"
-    >
-      <div className="max-w-2xl">
+    <article className="mx-auto max-w-2xl space-y-5" data-testid="about-page">
+      <section className="rounded-[2rem] border border-border/80 bg-gradient-to-br from-background via-background to-muted/40 px-6 py-8 shadow-sm sm:px-8">
         <div className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
           About
         </div>
@@ -58,8 +55,10 @@ export function AboutPage() {
             </a>
           </p>
         </div>
+      </section>
 
-        <div className="mt-10 space-y-4 rounded-2xl border border-border/70 bg-background/70 p-5">
+      <section className="rounded-[1.75rem] border border-border/80 bg-background/80 px-6 py-6 shadow-sm sm:px-8">
+        <div className="space-y-4">
           <h3 className="text-lg font-semibold text-foreground">Using Agents & MCP</h3>
           <p className="text-sm leading-6 text-muted-foreground">
             The Agent Bridge is a single local service that supports both terminal-based CLI
@@ -68,6 +67,7 @@ export function AboutPage() {
           </p>
           <McpClientSetup
             codeTestId="mcp-client-config"
+            configVariant="flat"
             descriptionTestId="mcp-client-description"
             onClientChange={setSelectedMcpClient}
             selectId="mcp-client-select"
@@ -80,7 +80,7 @@ export function AboutPage() {
             to confirm that the local bridge is connected.
           </p>
         </div>
-      </div>
+      </section>
     </article>
   );
 }

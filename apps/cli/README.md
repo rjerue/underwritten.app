@@ -34,6 +34,7 @@ Returns active file path, storage mode, and unsaved changes state.
 underwritten files list [--path <dir>] [--recursive] [--dirs]
 underwritten files read <path>
 underwritten files open <path>
+underwritten files mkdir <path>
 underwritten files create <path> [content]
 underwritten files move <src> <dest>
 underwritten files delete <path>

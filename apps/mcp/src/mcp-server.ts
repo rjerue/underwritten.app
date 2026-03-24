@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import * as z from "zod/v4";
 
-import type { UnderwrittenBridgeService } from "underwritten-bridge";
+import type { UnderwrittenBridgeToolClient } from "underwritten-bridge";
 
 function getMcpPackageVersion() {
   try {
@@ -49,7 +49,7 @@ function createErrorResult(error: unknown) {
   };
 }
 
-export async function connectMcpServer(service: UnderwrittenBridgeService) {
+export async function connectMcpServer(service: UnderwrittenBridgeToolClient) {
   const server = new McpServer({
     name: "underwritten-mcp",
     version: getMcpPackageVersion(),

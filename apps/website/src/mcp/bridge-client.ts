@@ -25,12 +25,10 @@ type BridgeConnection = {
 
 export type BridgePanelState = {
   configSnippet: string;
-  connectionCount: number;
   currentSessionId: string;
   enabled: boolean;
   errorMessage: string | null;
   primaryPort: number | null;
-  sessionCount: number;
   state: "connected" | "disabled" | "reachable" | "unreachable";
   statusLabel: string;
 };
@@ -475,20 +473,13 @@ export function useUnderwrittenBridge({
     const connected = connections.filter((connection) => connection.state === "connected");
     const paired = connections.filter((connection) => connection.state !== "error");
     const primary = connected[0] ?? paired[0] ?? null;
-    const sessionCount =
-      connected.reduce(
-        (count, connection) => count + (connection.status?.sessions.length ?? 0),
-        0,
-      ) || 0;
 
     return {
       configSnippet: bridgeConfigSnippet,
-      connectionCount: connected.length,
       currentSessionId: sessionIdRef.current,
       enabled,
       errorMessage: connections.find((connection) => connection.error)?.error ?? null,
       primaryPort: primary?.port ?? null,
-      sessionCount,
       state: !enabled
         ? "disabled"
         : connected.length > 0
@@ -499,10 +490,10 @@ export function useUnderwrittenBridge({
       statusLabel: !enabled
         ? "MCP integration is turned off"
         : connected.length > 0
-          ? `Connected to ${connected.length} localhost bridge${connected.length === 1 ? "" : "s"}`
+          ? "Connected to local bridge"
           : connections.length > 0
-            ? "Bridge reachable but not paired"
-            : "Bridge not detected",
+            ? "Local bridge detected but not paired"
+            : "Local bridge not detected",
     };
   }, [connections, enabled]);
 

@@ -2,6 +2,18 @@ import { createServer, type Server as HttpServer } from "node:http";
 
 import { createHttpServer } from "./http-server.js";
 import { UnderwrittenBridgeService } from "./service.js";
+export {
+  acquireSharedBridgeLease,
+  ensureSharedBridge,
+  executeSharedBridgeTool,
+  listSharedBridgeLeaseDebugFiles,
+  probeSharedBridge,
+  runSharedBridgeDaemon,
+  SharedUnderwrittenBridgeClient,
+  type BridgeConnection,
+  type SharedBridgeLease,
+  type UnderwrittenBridgeToolClient,
+} from "./shared-bridge.js";
 
 export {
   UnderwrittenBridgeError,

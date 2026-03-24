@@ -1,11 +1,11 @@
-import { ChevronDown, Settings2, X } from "lucide-react";
+import { CircleHelp, ChevronDown, Settings2, X } from "lucide-react";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 import type { FileStorageMode } from "../lib/file-system";
+import { cn } from "../lib/utils";
 import type { BridgePanelState } from "../mcp/bridge-client";
 import type { SidebarSide } from "./file-sidebar";
-import { McpClientSetup } from "./mcp-client-setup";
-import { mcpInstructions, type McpClient } from "./mcp-instructions";
 import { Button } from "./ui/button";
 
 export type FontPreset = {
@@ -42,8 +42,6 @@ type SettingsDialogProps = {
   onOpenChange: (open: boolean) => void;
   onRequestNativeFolder: () => void;
   onPageWidthModeChange: (mode: PageWidthMode) => void;
-  onRefreshBridge: () => void;
-  onRequestConfigCopy: (code: string) => void;
   onSidebarSideChange: (side: SidebarSide) => void;
   onSettingsChange: (settings: AppearanceSettings) => void;
   onStorageModeChange: (mode: FileStorageMode) => void;
@@ -74,11 +72,11 @@ function CollapsibleSection({
   title,
 }: CollapsibleSectionProps) {
   return (
-    <section className="rounded-2xl border border-border bg-background/60">
+    <section className="rounded-[1.5rem] border border-border/70 bg-background/45 shadow-sm">
       <button
         aria-controls={`${testId}-content`}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
         data-testid={testId}
         onClick={onToggle}
         type="button"
@@ -95,7 +93,7 @@ function CollapsibleSection({
       </button>
 
       {open ? (
-        <div className="border-t border-border px-4 py-4" data-testid={`${testId}-content`}>
+        <div className="border-t border-border/70 px-5 py-5" data-testid={`${testId}-content`}>
           {children}
         </div>
       ) : null}
@@ -108,6 +106,48 @@ function getPrimaryFontName(fontFamily: string) {
     .split(",")[0]
     ?.trim()
     .replace(/^["']|["']$/g, "");
+}
+
+type BridgeStatCardProps = {
+  label: string;
+  tooltip: string;
+  value: string | number;
+};
+
+function BridgeStatCard({ label, tooltip, value }: BridgeStatCardProps) {
+  return (
+    <div className="group relative rounded-2xl bg-muted/35 px-3 py-3">
+      <div className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <span>{label}</span>
+        <span
+          aria-label={`${label} help`}
+          className="inline-flex rounded-full text-muted-foreground/80 outline-none transition-colors group-hover:text-foreground group-focus-within:text-foreground"
+          tabIndex={0}
+        >
+          <CircleHelp className="h-3.5 w-3.5" />
+        </span>
+      </div>
+      <div
+        className={cn(
+          "pointer-events-none absolute left-3 top-2 z-10 max-w-64 -translate-y-full rounded-md border border-border bg-popover px-2.5 py-2 text-[11px] normal-case tracking-normal text-popover-foreground opacity-0 shadow-lg transition-opacity",
+          "group-hover:opacity-100 group-focus-within:opacity-100",
+        )}
+        role="tooltip"
+      >
+        {tooltip}
+      </div>
+      <div className="mt-1 break-all text-sm text-foreground">{value}</div>
+    </div>
+  );
+}
+
+function getChoiceButtonClass(selected: boolean) {
+  return cn(
+    "rounded-2xl border px-4 py-3 text-left transition-colors",
+    selected
+      ? "border-foreground/40 bg-muted/55 text-foreground"
+      : "border-border/70 bg-transparent text-foreground hover:border-foreground/20 hover:bg-muted/30",
+  );
 }
 
 export function SettingsDialog({
@@ -125,8 +165,6 @@ export function SettingsDialog({
   onOpenChange,
   onRequestNativeFolder,
   onPageWidthModeChange,
-  onRefreshBridge,
-  onRequestConfigCopy,
   onSidebarSideChange,
   onSettingsChange,
   onStorageModeChange,
@@ -142,7 +180,6 @@ export function SettingsDialog({
     layout: false,
     storage: false,
   });
-  const [selectedMcpClient, setSelectedMcpClient] = useState<McpClient>("codex");
 
   useEffect(() => {
     if (!open) return;
@@ -281,11 +318,7 @@ export function SettingsDialog({
                       return (
                         <button
                           key={preset.id}
-                          className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                            selected
-                              ? "border-foreground bg-foreground text-background"
-                              : "border-border bg-background text-foreground hover:bg-muted"
-                          }`}
+                          className={getChoiceButtonClass(selected)}
                           onClick={() => {
                             onSettingsChange({
                               ...settings,
@@ -296,18 +329,12 @@ export function SettingsDialog({
                         >
                           <div className="text-sm font-semibold">{preset.label}</div>
                           <div
-                            className={`mt-2 text-xs ${
-                              selected ? "text-background/80" : "text-muted-foreground"
-                            }`}
+                            className="mt-2 text-xs text-muted-foreground"
                             style={{ fontFamily: preset.sans }}
                           >
                             {preset.preview}
                           </div>
-                          <div
-                            className={`mt-3 space-y-1 text-[11px] ${
-                              selected ? "text-background/80" : "text-muted-foreground"
-                            }`}
-                          >
+                          <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
                             <div>Text: {getPrimaryFontName(preset.sans)}</div>
                             <div>Code: {getPrimaryFontName(preset.mono)}</div>
                           </div>
@@ -316,7 +343,7 @@ export function SettingsDialog({
                     })}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-border bg-background p-5">
+                <div className="border-t border-border/70 pt-4">
                   <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Preview
                   </div>
@@ -350,49 +377,44 @@ export function SettingsDialog({
               testId="settings-section-bridge"
               title="Agent Bridge"
             >
-              <div className="space-y-3">
-                <div className="rounded-xl border border-border bg-background p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-sm font-medium text-foreground">
-                        Enable Agent Integration
-                      </div>
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        Off by default. When enabled, Underwritten looks for its local bridge on
-                        this device. Your browser may show a permission prompt before allowing that
-                        connection.
-                      </div>
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-4 border-b border-border/70 pb-4">
+                  <div>
+                    <div className="text-sm font-medium text-foreground">
+                      Enable Agent Integration
                     </div>
-
-                    <button
-                      aria-checked={bridgeEnabled}
-                      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors ${
-                        bridgeEnabled ? "border-foreground bg-foreground" : "border-border bg-muted"
-                      }`}
-                      data-testid="mcp-enabled-toggle"
-                      onClick={() => onBridgeEnabledChange(!bridgeEnabled)}
-                      role="switch"
-                      type="button"
-                    >
-                      <span className="sr-only">Toggle agent integration</span>
-                      <span
-                        className={`inline-block h-5 w-5 rounded-full bg-background transition-transform ${
-                          bridgeEnabled ? "translate-x-6" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      Off by default. When enabled, Underwritten looks for its local bridge on this
+                      device. Your browser may show a permission prompt before allowing that
+                      connection.
+                    </div>
                   </div>
+
+                  <button
+                    aria-checked={bridgeEnabled}
+                    className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors ${
+                      bridgeEnabled ? "border-foreground bg-foreground" : "border-border bg-muted"
+                    }`}
+                    data-testid="mcp-enabled-toggle"
+                    onClick={() => onBridgeEnabledChange(!bridgeEnabled)}
+                    role="switch"
+                    type="button"
+                  >
+                    <span className="sr-only">Toggle agent integration</span>
+                    <span
+                      className={`inline-block h-5 w-5 rounded-full bg-background transition-transform ${
+                        bridgeEnabled ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
                 </div>
 
-                <div className="rounded-xl border border-border bg-background p-4">
+                <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="text-sm font-medium text-foreground">Status</div>
                       <div className="mt-1 text-sm text-muted-foreground">
                         {bridgePanel.statusLabel}
-                      </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        Session `{bridgePanel.currentSessionId}`
                       </div>
                     </div>
 
@@ -412,21 +434,16 @@ export function SettingsDialog({
                   </div>
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg border border-border/80 bg-muted/40 px-3 py-3">
-                      <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Localhost Port
-                      </div>
-                      <div className="mt-1 text-sm text-foreground">
-                        {bridgePanel.primaryPort ?? "Not connected"}
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg border border-border/80 bg-muted/40 px-3 py-3">
-                      <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Known Sessions
-                      </div>
-                      <div className="mt-1 text-sm text-foreground">{bridgePanel.sessionCount}</div>
-                    </div>
+                    <BridgeStatCard
+                      label="Session ID"
+                      tooltip="The browser session identifier Underwritten uses when pairing this tab with a local bridge."
+                      value={bridgePanel.currentSessionId}
+                    />
+                    <BridgeStatCard
+                      label="Bridge Port"
+                      tooltip="The localhost port for the shared Underwritten bridge this tab is currently using."
+                      value={bridgePanel.primaryPort ?? "Not connected"}
+                    />
                   </div>
 
                   {bridgePanel.errorMessage ? (
@@ -436,31 +453,13 @@ export function SettingsDialog({
                   ) : null}
                 </div>
 
-                <McpClientSetup
-                  actions={
-                    <>
-                      <Button
-                        disabled={!bridgeEnabled}
-                        onClick={onRefreshBridge}
-                        type="button"
-                        variant="outline"
-                      >
-                        Retry Discovery
-                      </Button>
-                      <Button
-                        onClick={() => onRequestConfigCopy(mcpInstructions[selectedMcpClient].code)}
-                        type="button"
-                        variant="outline"
-                      >
-                        Copy Config
-                      </Button>
-                    </>
-                  }
-                  codeTestId="mcp-config-snippet"
-                  onClientChange={setSelectedMcpClient}
-                  selectId="settings-mcp-client-select"
-                  selectedClient={selectedMcpClient}
-                />
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Setup details live on the{" "}
+                  <Link className="underline underline-offset-4 hover:text-foreground" to="/about">
+                    About page
+                  </Link>
+                  .
+                </p>
               </div>
             </CollapsibleSection>
 
@@ -486,20 +485,12 @@ export function SettingsDialog({
                       return (
                         <button
                           key={side}
-                          className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                            selected
-                              ? "border-foreground bg-foreground text-background"
-                              : "border-border bg-background text-foreground hover:bg-muted"
-                          }`}
+                          className={getChoiceButtonClass(selected)}
                           onClick={() => onSidebarSideChange(side)}
                           type="button"
                         >
                           <div className="text-sm font-semibold capitalize">{side}</div>
-                          <div
-                            className={`mt-2 text-xs ${
-                              selected ? "text-background/80" : "text-muted-foreground"
-                            }`}
-                          >
+                          <div className="mt-2 text-xs text-muted-foreground">
                             Keep the file browser on the {side} side of the editor.
                           </div>
                         </button>
@@ -532,20 +523,12 @@ export function SettingsDialog({
                       return (
                         <button
                           key={option.id}
-                          className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                            selected
-                              ? "border-foreground bg-foreground text-background"
-                              : "border-border bg-background text-foreground hover:bg-muted"
-                          }`}
+                          className={getChoiceButtonClass(selected)}
                           onClick={() => onPageWidthModeChange(option.id)}
                           type="button"
                         >
                           <div className="text-sm font-semibold">{option.label}</div>
-                          <div
-                            className={`mt-2 text-xs ${
-                              selected ? "text-background/80" : "text-muted-foreground"
-                            }`}
-                          >
+                          <div className="mt-2 text-xs text-muted-foreground">
                             {option.description}
                           </div>
                         </button>
@@ -554,7 +537,7 @@ export function SettingsDialog({
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-background p-4">
+                <div className="border-t border-border/70 pt-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-sm font-medium text-foreground">Line Numbers</div>
@@ -627,11 +610,7 @@ export function SettingsDialog({
                     return (
                       <button
                         key={option.id}
-                        className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                          selected
-                            ? "border-foreground bg-foreground text-background"
-                            : "border-border bg-background text-foreground hover:bg-muted"
-                        }`}
+                        className={getChoiceButtonClass(selected)}
                         onClick={() => {
                           if (option.id === "native-folder" && !nativeFolderSupported) {
                             return;
@@ -642,11 +621,7 @@ export function SettingsDialog({
                         type="button"
                       >
                         <div className="text-sm font-semibold">{option.label}</div>
-                        <div
-                          className={`mt-2 text-xs ${
-                            selected ? "text-background/80" : "text-muted-foreground"
-                          }`}
-                        >
+                        <div className="mt-2 text-xs text-muted-foreground">
                           {option.description}
                         </div>
                       </button>
@@ -655,7 +630,7 @@ export function SettingsDialog({
                 </div>
 
                 {!nativeFolderSupported ? (
-                  <div className="rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground">
+                  <div className="rounded-2xl bg-muted/35 px-4 py-4 text-sm text-muted-foreground">
                     Native folder access depends on the File System Access API, which is not
                     available in every browser.{" "}
                     <a
@@ -670,7 +645,7 @@ export function SettingsDialog({
                   </div>
                 ) : null}
 
-                <div className="rounded-xl border border-border bg-background p-4">
+                <div className="border-t border-border/70 pt-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-sm font-medium text-foreground">Autosave</div>
@@ -707,7 +682,7 @@ export function SettingsDialog({
                 </div>
 
                 {storageMode === "native-folder" ? (
-                  <div className="rounded-xl border border-border bg-background p-4">
+                  <div className="rounded-2xl bg-muted/35 px-4 py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <div className="text-sm font-medium text-foreground">Chosen folder</div>

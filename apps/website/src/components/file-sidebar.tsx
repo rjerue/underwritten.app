@@ -34,6 +34,7 @@ type FileSidebarProps = {
   expandedDirectories: string[];
   folderName: string | null;
   hasUnsavedChanges: boolean;
+  isInitializingRoot: boolean;
   loadingPaths: string[];
   nativeFolderSupported: boolean;
   onChangeFolder: () => void;
@@ -140,6 +141,7 @@ export function FileSidebar({
   expandedDirectories,
   folderName,
   hasUnsavedChanges,
+  isInitializingRoot,
   loadingPaths,
   nativeFolderSupported,
   onChangeFolder,
@@ -448,12 +450,16 @@ export function FileSidebar({
         </div>
         {storageMode === "native-folder" ? (
           <div className="mt-2 text-xs text-muted-foreground" data-testid="native-folder-name">
-            {folderName ? `Folder: ${folderName}` : "No native folder selected"}
+            {isInitializingRoot
+              ? "Loading folder…"
+              : folderName
+                ? `Folder: ${folderName}`
+                : "No native folder selected"}
           </div>
         ) : null}
       </div>
 
-      {errorMessage ? (
+      {errorMessage && !isInitializingRoot ? (
         <div
           className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
           data-testid="file-error"
@@ -466,7 +472,7 @@ export function FileSidebar({
         <div className="border-b border-border/50 pb-4 text-sm text-muted-foreground">
           Native folder access is unavailable in this browser.
         </div>
-      ) : isLoadingRoot(loadingPaths) && rootEntries.length === 0 ? (
+      ) : isInitializingRoot || (isLoadingRoot(loadingPaths) && rootEntries.length === 0) ? (
         <p className="text-sm text-muted-foreground">Loading files…</p>
       ) : rootEntries.length === 0 ? (
         <p className="text-sm text-muted-foreground">No files or folders yet.</p>

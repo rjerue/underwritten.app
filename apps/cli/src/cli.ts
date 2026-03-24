@@ -2,7 +2,7 @@
 
 import { fileURLToPath } from "node:url";
 import { underwrittenBridgePortRange } from "underwritten-bridge-contract";
-import { startUnderwrittenBridge } from "underwritten-bridge";
+import { runSharedBridgeDaemon } from "underwritten-bridge";
 import { ensureBridge } from "./bridge-process.js";
 
 const EXPLICIT_PORT = process.env.UNDERWRITTEN_BRIDGE_PORT
@@ -10,39 +10,10 @@ const EXPLICIT_PORT = process.env.UNDERWRITTEN_BRIDGE_PORT
   : undefined;
 
 async function runBridgeDaemon() {
-  const bridge = await startUnderwrittenBridge({
+  await runSharedBridgeDaemon({
     port: EXPLICIT_PORT,
     portRange: EXPLICIT_PORT ? undefined : underwrittenBridgePortRange,
   });
-
-  // Idle timeout logic
-  let lastActivity = Date.now();
-  const idleTimeout = 60_000; // 1 minute idle
-
-  const checkIdle = async () => {
-    // @ts-ignore - accessing private for lifecycle
-    const sessions = bridge.service.sessions;
-
-    // If we have a paired browser session, we stay alive
-    let hasLiveSession = false;
-    const now = Date.now();
-    for (const session of sessions.values()) {
-      if (session.disconnectedAt === null && now - session.session.lastHeartbeatAt < 15000) {
-        hasLiveSession = true;
-        break;
-      }
-    }
-
-    if (!hasLiveSession && Date.now() - lastActivity > idleTimeout) {
-      await bridge.close();
-      process.exit(0);
-    }
-  };
-
-  setInterval(checkIdle, 10_000);
-
-  process.on("SIGINT", () => bridge.close().then(() => process.exit(0)));
-  process.on("SIGTERM", () => bridge.close().then(() => process.exit(0)));
 }
 
 async function executeCommand(name: string, args: Record<string, unknown> = {}) {
@@ -86,6 +57,27 @@ async function executeCommand(name: string, args: Record<string, unknown> = {}) 
       process.stderr.write("\n");
     }
     throw new Error(error.error?.message || `Bridge command failed: ${name}`);
+  }
+}
+
+function parseEditsJson(raw: string | undefined) {
+  if (typeof raw !== "string") {
+    throw new Error("document edit requires an edits_json argument.");
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      throw new Error("document edit expects a JSON array of markdown edits.");
+    }
+
+    return parsed;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Invalid edits_json: ${error.message}`);
+    }
+
+    throw new Error("Invalid edits_json.");
   }
 }
 
@@ -150,6 +142,9 @@ COMMANDS
     files open <path>
         Open a specific workspace file in the editor.
 
+    files mkdir <path>
+        Create a new folder in the workspace.
+
     files create <path> [content]
         Create a new file in the workspace.
 
@@ -195,6 +190,7 @@ Commands:
   files list                    List workspace files
   files read <path>             Read file content
   files open <path>             Open file in editor
+  files mkdir <path>            Create a folder
   files create <path> [content] Create a new file
   files move <src> <dest>       Move/rename a file
   files delete <path>           Delete a file
@@ -231,6 +227,25 @@ Run 'underwritten docs' for the full manual.
       result = await executeCommand("read_file", { path: argv[2] });
     } else if (command === "files" && argv[1] === "open") {
       result = await executeCommand("open_file", { path: argv[2] });
+    } else if (command === "files" && argv[1] === "mkdir") {
+      result = await executeCommand("create_folder", {
+        path: argv[2],
+      });
+    } else if (command === "files" && argv[1] === "create") {
+      result = await executeCommand("create_file", {
+        content: argv[3],
+        path: argv[2],
+      });
+    } else if (command === "files" && argv[1] === "move") {
+      result = await executeCommand("move_path", {
+        destinationPath: argv[3],
+        sourcePath: argv[2],
+      });
+    } else if (command === "files" && argv[1] === "delete") {
+      result = await executeCommand("delete_path", {
+        force: argv.includes("--force"),
+        path: argv[2],
+      });
     } else if (command === "document" && argv[1] === "get") {
       result = await executeCommand("get_current_document", {
         includeOutline: argv.includes("--outline"),
@@ -239,6 +254,10 @@ Run 'underwritten docs' for the full manual.
       result = await executeCommand("replace_current_document", { markdown: argv[2] });
     } else if (command === "document" && argv[1] === "save") {
       result = await executeCommand("save_document", { path: argv[2] });
+    } else if (command === "document" && argv[1] === "edit") {
+      result = await executeCommand("apply_markdown_edits", {
+        edits: parseEditsJson(argv[2]),
+      });
     } else {
       console.error(`Unknown command: ${command}`);
       process.exit(1);

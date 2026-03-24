@@ -137,12 +137,58 @@ function getStringArg(args: Record<string, unknown>, key: string) {
 export class UnderwrittenBridgeService {
   readonly bridgeId = randomUUID();
 
+  private lastActivityAt = Date.now();
   private readonly pairings = new Map<string, PairingRecord>();
   private readonly sessions = new Map<string, SessionRecord>();
   private port = 0;
 
   setPort(port: number) {
     this.port = port;
+  }
+
+  private pruneExpiredState() {
+    const now = Date.now();
+
+    for (const [sessionId, session] of this.sessions.entries()) {
+      const isDisconnected = session.disconnectedAt !== null;
+      const isStale = now - session.session.lastHeartbeatAt > underwrittenBridgeSessionTtlMs;
+
+      if (!isDisconnected && !isStale) {
+        continue;
+      }
+
+      for (const pending of session.pendingActions) {
+        clearTimeout(pending.timeoutId);
+        pending.reject(
+          new UnderwrittenBridgeError(
+            "The browser session disappeared before the action completed.",
+            "SESSION_NOT_FOUND",
+            404,
+          ),
+        );
+      }
+
+      this.sessions.delete(sessionId);
+    }
+
+    for (const [token, pairing] of this.pairings.entries()) {
+      const session = this.sessions.get(pairing.sessionId);
+      const pairingExpired = now - pairing.createdAt > underwrittenBridgeSessionTtlMs;
+      if (session || !pairingExpired) {
+        continue;
+      }
+
+      this.pairings.delete(token);
+    }
+  }
+
+  markActivity() {
+    this.lastActivityAt = Date.now();
+    this.pruneExpiredState();
+  }
+
+  getLastActivityAt() {
+    return this.lastActivityAt;
   }
 
   close() {
@@ -161,6 +207,8 @@ export class UnderwrittenBridgeService {
     origin: string,
     request: UnderwrittenBridgePairRequest,
   ): UnderwrittenBridgePairResponse {
+    this.markActivity();
+
     if (!isAllowedUnderwrittenOrigin(origin)) {
       throw new UnderwrittenBridgeError(
         `Origin ${origin} is not allowed to connect to the Underwritten bridge.`,
@@ -190,6 +238,8 @@ export class UnderwrittenBridgeService {
     token: string,
     request: UnderwrittenBridgeSessionSyncRequest,
   ): UnderwrittenBridgeSessionSyncResponse {
+    this.markActivity();
+
     const pairing = this.pairings.get(token);
     if (!pairing || pairing.origin !== origin || pairing.sessionId !== request.session.sessionId) {
       throw new UnderwrittenBridgeError(
@@ -255,6 +305,8 @@ export class UnderwrittenBridgeService {
   }
 
   disconnectSession(origin: string, token: string, sessionId: string) {
+    this.markActivity();
+
     const pairing = this.pairings.get(token);
     const session = this.sessions.get(sessionId);
 
@@ -267,9 +319,12 @@ export class UnderwrittenBridgeService {
     }
 
     session.disconnectedAt = Date.now();
+    this.pairings.delete(token);
   }
 
   getStatus(origin: string, token: string): UnderwrittenBridgeStatusResponse {
+    this.markActivity();
+
     const pairing = this.pairings.get(token);
     if (!pairing || pairing.origin !== origin) {
       throw new UnderwrittenBridgeError(
@@ -297,6 +352,8 @@ export class UnderwrittenBridgeService {
   }
 
   async callTool(name: ToolName, args: Record<string, unknown>): Promise<unknown> {
+    this.markActivity();
+
     switch (name) {
       case "get_workspace_status":
         return await this.enqueueAction<GetWorkspaceStatusAction>({
@@ -397,6 +454,7 @@ export class UnderwrittenBridgeService {
   }
 
   private getLiveSessions() {
+    this.pruneExpiredState();
     const now = Date.now();
 
     return [...this.sessions.values()]
@@ -408,6 +466,10 @@ export class UnderwrittenBridgeService {
         return now - session.session.lastHeartbeatAt <= underwrittenBridgeSessionTtlMs;
       })
       .sort(compareSessions);
+  }
+
+  hasLiveSession() {
+    return this.getLiveSessions().length > 0;
   }
 
   private tryResolveActiveSession() {

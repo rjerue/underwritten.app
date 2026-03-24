@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
-import { underwrittenBridgePortRange } from "underwritten-bridge-contract";
-
 import { startUnderwrittenMcp } from "./index.js";
 
+const explicitPort = process.env.UNDERWRITTEN_BRIDGE_PORT
+  ? parseInt(process.env.UNDERWRITTEN_BRIDGE_PORT, 10)
+  : undefined;
+
 const startedBridge = await startUnderwrittenMcp({
-  portRange: underwrittenBridgePortRange,
+  port: explicitPort,
 });
 
 const shutdown = async () => {
@@ -17,5 +19,9 @@ process.on("SIGINT", () => {
   void shutdown();
 });
 process.on("SIGTERM", () => {
+  void shutdown();
+});
+
+process.stdin.on("end", () => {
   void shutdown();
 });

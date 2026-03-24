@@ -157,6 +157,33 @@ async function readWorkspaceFile(page: Page, fileName: string) {
 }
 
 test.describe("editor core flows", () => {
+  test("new users start with a feature walkthrough document", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByTestId("editor-surface")).toBeVisible();
+    await expect(page.getByText("Welcome to Underwritten")).toBeVisible();
+    await expect(page.getByTestId("table-editor")).toBeVisible();
+    await expect(page.getByTestId("code-block-editor")).toBeVisible();
+    await expect(page.getByTestId("code-block-language")).toHaveValue("plantuml");
+    await expect(page.getByTestId("header-cell-1")).toHaveValue("Mode");
+    await expect(page.getByTestId("body-cell-1-1")).toHaveValue("write");
+    await expect(page.getByTestId("body-cell-2-1")).toHaveValue("read");
+    await expect(page.getByTestId("body-cell-3-1")).toHaveValue("raw");
+
+    await page.getByTestId("mode-read").click();
+    await expect(readMode(page)).toContainText("Drafting and editing");
+    await expect(readMode(page)).toContainText("Reviewing the rendered document");
+    await expect(readMode(page)).toContainText("Working directly in markdown");
+
+    await page.getByTestId("mode-raw").click();
+    await expect(rawMode(page)).toHaveValue(/# Welcome to Underwritten/);
+    await expect(rawMode(page)).toHaveValue(/\| Mode \| Best for \| What you get \|/);
+    await expect(rawMode(page)).toHaveValue(/\| write \| Drafting and editing \|/);
+    await expect(rawMode(page)).toHaveValue(/\| read \| Reviewing the rendered document \|/);
+    await expect(rawMode(page)).toHaveValue(/\| raw \| Working directly in markdown \|/);
+    await expect(rawMode(page)).toHaveValue(/```plantuml/);
+  });
+
   test("about page is available from the title bar without losing the draft", async ({ page }) => {
     await gotoEditor(page, createDraft(["About page draft"], { title: "Private Notes" }));
 
@@ -722,6 +749,23 @@ test.describe("editor core flows", () => {
     await writeWorkspaceFile(page, "disk-conflict-note.md", "Disk wins");
 
     await expect(page.getByTestId("disk-conflict-banner")).toBeVisible({ timeout: 6000 });
+    await expect(page.getByTestId("file-error")).toHaveCount(0);
+    const conflictFlashbarLayout = await page
+      .getByTestId("disk-conflict-banner")
+      .evaluate((node) => {
+        if (!(node instanceof HTMLElement)) return null;
+        const rect = node.getBoundingClientRect();
+        const style = window.getComputedStyle(node);
+
+        return {
+          bottomInset: Math.round(window.innerHeight - rect.bottom),
+          position: style.position,
+        };
+      });
+    expect(conflictFlashbarLayout).toEqual({
+      bottomInset: 0,
+      position: "fixed",
+    });
     await expect(page.getByTestId("sidebar-save")).toBeDisabled();
 
     await page.waitForTimeout(2500);
@@ -758,6 +802,7 @@ test.describe("editor core flows", () => {
     await writeWorkspaceFile(page, "acknowledge-conflict-note.md", "External edit");
 
     await expect(page.getByTestId("disk-conflict-banner")).toBeVisible({ timeout: 6000 });
+    await expect(page.getByTestId("file-error")).toHaveCount(0);
     await page.getByTestId("disk-conflict-acknowledge").click();
     await expect(page.getByTestId("sidebar-save")).toBeEnabled();
 

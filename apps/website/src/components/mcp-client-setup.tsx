@@ -6,6 +6,7 @@ import { McpConfigCard } from "./mcp-config-card";
 type McpClientSetupProps = {
   actions?: ReactNode;
   codeTestId?: string;
+  configVariant?: "card" | "flat";
   descriptionTestId?: string;
   selectId: string;
   selectTestId?: string;
@@ -17,6 +18,7 @@ type McpClientSetupProps = {
 export function McpClientSetup({
   actions,
   codeTestId,
+  configVariant = "card",
   descriptionTestId,
   onClientChange,
   selectId,
@@ -28,15 +30,16 @@ export function McpClientSetup({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <label
-          className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+          className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
           htmlFor={selectId}
         >
           Integration Type
         </label>
         <select
-          className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-foreground/30"
+          aria-label="MCP client"
+          className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-foreground/30 sm:max-w-xs"
           data-testid={selectTestId}
           id={selectId}
           onChange={(event) => onClientChange(event.target.value as McpClient)}
@@ -59,6 +62,7 @@ export function McpClientSetup({
         code={selectedInstructions.code}
         codeTestId={codeTestId}
         title={title}
+        variant={configVariant}
       />
     </div>
   );

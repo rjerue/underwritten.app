@@ -101,6 +101,20 @@ async function syncBridge(
   return response;
 }
 
+async function disconnectBridge(port: number, token: string, sessionId: string) {
+  return await fetch(`http://127.0.0.1:${port}/session/disconnect`, {
+    body: JSON.stringify({
+      sessionId,
+    }),
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Origin: allowedOrigin,
+    },
+    method: "POST",
+  });
+}
+
 describe("underwritten bridge service", () => {
   let startedBridge: StartedUnderwrittenBridge;
 
@@ -257,6 +271,29 @@ describe("underwritten bridge service", () => {
     await expect(startedBridge.service.callTool("get_workspace_status", {})).rejects.toThrow(
       /No live underwritten\.app session/i,
     );
+  });
+
+  test("removes disconnected sessions from bridge status", async () => {
+    const sessionId = "disconnecting-session";
+    const token = await pairBridge(startedBridge.port, sessionId);
+
+    await syncBridge(startedBridge.port, token, createSessionState(sessionId));
+    const disconnectResponse = await disconnectBridge(startedBridge.port, token, sessionId);
+    expect(disconnectResponse.ok).toBe(true);
+
+    const replacementToken = await pairBridge(startedBridge.port, "status-session");
+    const statusResponse = await fetch(`http://127.0.0.1:${startedBridge.port}/status`, {
+      headers: {
+        Authorization: `Bearer ${replacementToken}`,
+        Origin: allowedOrigin,
+      },
+    });
+
+    expect(statusResponse.ok).toBe(true);
+    await expect(statusResponse.json()).resolves.toMatchObject({
+      activeSessionId: null,
+      sessions: [],
+    });
   });
 
   test("dispatches each required tool action shape", async () => {

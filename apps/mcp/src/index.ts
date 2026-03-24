@@ -1,23 +1,44 @@
 import {
-  startUnderwrittenBridge,
-  type StartedUnderwrittenBridge,
+  acquireSharedBridgeLease,
+  SharedUnderwrittenBridgeClient,
   UnderwrittenBridgeError,
-  UnderwrittenBridgeService,
+  type SharedBridgeLease,
 } from "underwritten-bridge";
 
 import { connectMcpServer } from "./mcp-server.js";
 
-export { UnderwrittenBridgeError, UnderwrittenBridgeService };
+export { UnderwrittenBridgeError, SharedUnderwrittenBridgeClient };
 
-export type StartedUnderwrittenMcpBridge = StartedUnderwrittenBridge;
+export type StartedUnderwrittenMcpBridge = {
+  close: () => Promise<void>;
+  lease: SharedBridgeLease;
+  port: number;
+};
 
 export async function startUnderwrittenMcp(options?: {
   port?: number;
-  portRange?: { end: number; start: number };
 }): Promise<StartedUnderwrittenMcpBridge> {
-  const bridge = await startUnderwrittenBridge(options);
+  const lease = await acquireSharedBridgeLease({
+    port: options?.port,
+  });
+  const client = new SharedUnderwrittenBridgeClient({
+    port: options?.port,
+  });
+  const server = await connectMcpServer(client);
 
-  await connectMcpServer(bridge.service);
+  let isClosed = false;
 
-  return bridge;
+  return {
+    close: async () => {
+      if (isClosed) {
+        return;
+      }
+
+      isClosed = true;
+      await server.close();
+      await lease.close();
+    },
+    lease,
+    port: lease.port,
+  };
 }
