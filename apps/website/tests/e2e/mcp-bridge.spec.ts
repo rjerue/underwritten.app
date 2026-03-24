@@ -50,9 +50,8 @@ test.describe("mcp bridge integration", () => {
     await gotoEditor(page, createDraft(["Bridge test draft"], { title: "Bridge Draft" }));
 
     await waitForBridgeUi(page);
-    await expect(page.getByTestId("mcp-config-snippet")).toContainText(
-      "codex mcp add underwritten -- npx -y underwritten-mcp",
-    );
+    await expect(page.getByText("Setup details live on the")).toBeVisible();
+    await expect(page.getByRole("link", { name: "About page" })).toHaveAttribute("href", "/about");
     await page.keyboard.press("Escape");
     await expect
       .poll(async () => {
