@@ -4,8 +4,14 @@ set -e
 # Ensure we are in the root directory
 cd "$(dirname "$0")/.."
 
+if [ -x "${HOME}/.vite-plus/bin/vp" ]; then
+  VP_BIN="${HOME}/.vite-plus/bin/vp"
+else
+  VP_BIN="$(command -v vp)"
+fi
+
 echo "Building all packages..."
-vp run build -r
+"${VP_BIN}" run build -r
 
 # List of packages to check and publish in order
 PACKAGES=(
@@ -14,12 +20,6 @@ PACKAGES=(
   "apps/cli"
   "apps/mcp"
 )
-
-# Detect if we should use provenance (recommended for CI/OIDC)
-PROVENANCE_FLAG=""
-if [ "$GITHUB_ACTIONS" = "true" ]; then
-  PROVENANCE_FLAG="--provenance"
-fi
 
 for dir in "${PACKAGES[@]}"; do
   echo "---------------------------------------------------"
@@ -32,9 +32,9 @@ for dir in "${PACKAGES[@]}"; do
     PACKAGE_VERSION=$(node -p "require('./package.json').version")
     
     # Check if this version exists on npm
-    if ! vp info "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --json >/dev/null 2>&1; then
+    if ! "${VP_BIN}" info "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --json >/dev/null 2>&1; then
       echo "Publishing ${PACKAGE_NAME}@${PACKAGE_VERSION}..."
-      vp pm publish --access public --no-git-checks $PROVENANCE_FLAG
+      "${VP_BIN}" pm publish --access public --no-git-checks
     else
       echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is already published; skipping."
     fi

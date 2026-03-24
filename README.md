@@ -20,7 +20,7 @@ Releases are currently handled manually by updating the version numbers in `pack
 To publish manually from your local machine (requires npm login):
 
 ```bash
-npm run publish-packages
+vp run publish-packages
 ```
 
 ## Development
