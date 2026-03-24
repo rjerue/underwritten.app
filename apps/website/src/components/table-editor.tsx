@@ -19,6 +19,11 @@ type TableEditorProps = {
   readOnly?: boolean;
 };
 
+function resizeTextarea(element: HTMLTextAreaElement) {
+  element.style.height = "0px";
+  element.style.height = `${element.scrollHeight}px`;
+}
+
 export function TableEditor({
   initialData,
   onChange,
@@ -34,16 +39,44 @@ export function TableEditor({
     ["", "", ""],
   ];
   const [data, setData] = useState<string[][]>(initialData ?? fallbackData);
-  const cellRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const cellRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
   const focusRequestVersionRef = useRef(0);
   const transientEntryDirectionRef = useRef<"left" | "right" | null>(null);
   const stopPropagation = useCallback((event: React.SyntheticEvent) => {
     event.stopPropagation();
   }, []);
+  const setCellRef = useCallback((key: string, element: HTMLTextAreaElement | null) => {
+    if (!element) {
+      cellRefs.current.delete(key);
+      return;
+    }
+
+    cellRefs.current.set(key, element);
+    resizeTextarea(element);
+  }, []);
 
   useEffect(() => {
     setData(initialData ?? fallbackData);
   }, [initialData]);
+
+  useEffect(() => {
+    cellRefs.current.forEach((element) => {
+      resizeTextarea(element);
+    });
+  }, [data]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      cellRefs.current.forEach((element) => {
+        resizeTextarea(element);
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const cancelPendingCellFocus = useCallback(() => {
     focusRequestVersionRef.current += 1;
@@ -164,7 +197,7 @@ export function TableEditor({
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent, row: number, col: number) => {
-      const input = event.currentTarget as HTMLInputElement;
+      const input = event.currentTarget as HTMLTextAreaElement;
       const caretAtStart = input.selectionStart === 0 && input.selectionEnd === 0;
       const caretAtEnd =
         input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
@@ -288,13 +321,13 @@ export function TableEditor({
       onMouseDown={(event) => event.stopPropagation()}
     >
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full border-collapse">
+        <table className="min-w-full table-auto border-collapse">
           <thead>
             <tr>
               {data[0]?.map((cell, colIndex) => (
                 <th
                   key={colIndex}
-                  className="relative border-r border-b border-border bg-muted/50 p-0 last:border-r-0"
+                  className="relative border-r border-b border-border bg-muted/50 p-0 align-top last:border-r-0"
                 >
                   {!readOnly ? (
                     <button
@@ -313,17 +346,18 @@ export function TableEditor({
                     </button>
                   ) : null}
 
-                  <input
+                  <textarea
                     ref={(element) => {
-                      if (element) cellRefs.current.set(`0-${colIndex}`, element);
+                      setCellRef(`0-${colIndex}`, element);
                     }}
-                    type="text"
                     value={cell}
+                    rows={1}
                     data-testid={`header-cell-${colIndex + 1}`}
                     onBeforeInput={stopPropagation}
                     onInput={stopPropagation}
                     onChange={(event) => {
                       event.stopPropagation();
+                      resizeTextarea(event.currentTarget);
                       updateCell(0, colIndex, event.target.value);
                     }}
                     onKeyDown={(event) => {
@@ -332,9 +366,9 @@ export function TableEditor({
                     }}
                     onMouseDown={stopPropagation}
                     readOnly={readOnly}
-                    className="min-w-[100px] w-full bg-transparent px-3 py-2 pr-8 font-semibold text-foreground outline-none focus:bg-muted/30"
+                    className="min-h-10 w-full resize-none overflow-hidden bg-transparent px-3 py-2 pr-8 font-semibold whitespace-pre-wrap break-words text-foreground outline-none focus:bg-muted/30"
                     placeholder="Header"
-                  />
+                  ></textarea>
                 </th>
               ))}
 
@@ -365,19 +399,20 @@ export function TableEditor({
                 {row.map((cell, colIndex) => (
                   <td
                     key={colIndex}
-                    className="border-r border-b border-border p-0 last:border-r-0"
+                    className="border-r border-b border-border p-0 align-top last:border-r-0"
                   >
-                    <input
+                    <textarea
                       ref={(element) => {
-                        if (element) cellRefs.current.set(`${rowIndex + 1}-${colIndex}`, element);
+                        setCellRef(`${rowIndex + 1}-${colIndex}`, element);
                       }}
-                      type="text"
                       value={cell}
+                      rows={1}
                       data-testid={`body-cell-${rowIndex + 1}-${colIndex + 1}`}
                       onBeforeInput={stopPropagation}
                       onInput={stopPropagation}
                       onChange={(event) => {
                         event.stopPropagation();
+                        resizeTextarea(event.currentTarget);
                         updateCell(rowIndex + 1, colIndex, event.target.value);
                       }}
                       onKeyDown={(event) => {
@@ -386,9 +421,9 @@ export function TableEditor({
                       }}
                       onMouseDown={stopPropagation}
                       readOnly={readOnly}
-                      className="min-w-[100px] w-full bg-transparent px-3 py-2 text-foreground outline-none focus:bg-muted/30"
+                      className="min-h-10 w-full resize-none overflow-hidden bg-transparent px-3 py-2 whitespace-pre-wrap break-words text-foreground outline-none focus:bg-muted/30"
                       placeholder="..."
-                    />
+                    ></textarea>
                   </td>
                 ))}
 

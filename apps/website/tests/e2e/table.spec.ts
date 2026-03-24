@@ -20,7 +20,7 @@ async function moveLeftUntil(page: Page, predicate: () => Promise<boolean>) {
 
 async function setInputCaret(page: Page, testId: string, edge: "start" | "end") {
   await page.getByTestId(testId).evaluate((node, targetEdge) => {
-    if (!(node instanceof HTMLInputElement)) return;
+    if (!(node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement)) return;
 
     const offset = targetEdge === "start" ? 0 : node.value.length;
     node.focus();
@@ -402,7 +402,11 @@ test.describe("table workflows", () => {
       .poll(async () =>
         page
           .getByTestId("header-cell-1")
-          .evaluate((node) => (node instanceof HTMLInputElement ? node.selectionStart : -1)),
+          .evaluate((node) =>
+            node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement
+              ? node.selectionStart
+              : -1,
+          ),
       )
       .toBe(1);
 
@@ -417,7 +421,11 @@ test.describe("table workflows", () => {
       .poll(async () =>
         page
           .getByTestId("header-cell-2")
-          .evaluate((node) => (node instanceof HTMLInputElement ? node.selectionStart : -1)),
+          .evaluate((node) =>
+            node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement
+              ? node.selectionStart
+              : -1,
+          ),
       )
       .toBe(1);
 

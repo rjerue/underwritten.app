@@ -388,13 +388,13 @@ function ReadModeDocument({
                   />
                 ) : null}
                 <div className="my-4 overflow-x-auto rounded-lg border border-border">
-                  <table className="w-full border-collapse">
+                  <table className="min-w-full table-auto border-collapse">
                     <thead>
                       <tr>
                         {table.data[0]?.map((cell, cellIndex) => (
                           <th
                             key={cellIndex}
-                            className="border-r border-b border-border bg-muted/50 px-3 py-2 text-left font-semibold last:border-r-0"
+                            className="border-r border-b border-border bg-muted/50 px-3 py-2 text-left align-top font-semibold whitespace-pre-wrap break-words last:border-r-0"
                           >
                             {cell}
                           </th>
@@ -407,7 +407,7 @@ function ReadModeDocument({
                           {row.map((cell, cellIndex) => (
                             <td
                               key={cellIndex}
-                              className="border-r border-b border-border px-3 py-2 last:border-r-0"
+                              className="border-r border-b border-border px-3 py-2 align-top whitespace-pre-wrap break-words last:border-r-0"
                             >
                               {cell}
                             </td>
