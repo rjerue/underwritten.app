@@ -305,7 +305,7 @@ function DiagramPreview({ code, language }: { code: string; language: string | n
   const [mermaidError, setMermaidError] = useState<string | null>(null);
   const [plantUmlError, setPlantUmlError] = useState<string | null>(null);
   const plantUmlUrl = useMemo(
-    () => (language === "plantuml" ? buildPlantUmlUrl(code) : null),
+    () => (language === "plantuml" ? buildPlantUmlUrl(code, "png") : null),
     [code, language],
   );
 
@@ -389,7 +389,7 @@ function DiagramPreview({ code, language }: { code: string; language: string | n
     >
       <img
         alt="PlantUML diagram preview"
-        className="mx-auto max-w-full dark:invert dark:hue-rotate-180"
+        className="mx-auto max-w-full"
         onError={() => {
           setPlantUmlError("Unable to load PlantUML preview.");
         }}

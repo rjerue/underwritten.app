@@ -152,7 +152,7 @@ export const initialValue: Descendant[] = [
     type: "paragraph",
     children: [
       {
-        text: "This PlantUML block opens in write mode as an editable code block with a preview tab.",
+        text: "This Mermaid block opens in write mode as an editable code block with a preview tab.",
       },
     ],
   },
@@ -160,7 +160,7 @@ export const initialValue: Descendant[] = [
     type: "paragraph",
     children: [
       {
-        text: "[CODEBLOCK:code-block-starter-plantuml]",
+        text: "[CODEBLOCK:code-block-starter-mermaid]",
       },
     ],
   },
@@ -207,15 +207,12 @@ export const initialTablesValue: TableData[] = [
 ];
 export const initialCodeBlocksValue: CodeBlockData[] = [
   {
-    code: `@startuml
-title Underwritten modes
-[*] --> Write
-Write --> Read : review
-Read --> Raw : inspect markdown
-Raw --> Write : keep drafting
-@enduml`,
-    id: "code-block-starter-plantuml",
-    language: "plantuml",
+    code: `flowchart LR
+    Write[Write mode] --> Read[Read mode]
+    Read --> Raw[Raw mode]
+    Raw --> Write`,
+    id: "code-block-starter-mermaid",
+    language: "mermaid",
     position: 0,
   },
 ];

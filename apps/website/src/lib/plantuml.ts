@@ -38,7 +38,7 @@ function appendPlantUmlBytes(byte1: number, byte2: number, byte3: number) {
   ].join("");
 }
 
-export function buildPlantUmlUrl(code: string) {
+export function buildPlantUmlUrl(code: string, format: "png" | "svg" = "svg") {
   const compressed = deflateSync(strToU8(code), { level: 9 });
   let encoded = "";
 
@@ -50,5 +50,5 @@ export function buildPlantUmlUrl(code: string) {
     );
   }
 
-  return `https://www.plantuml.com/plantuml/svg/${encoded}`;
+  return `https://www.plantuml.com/plantuml/${format}/${encoded}`;
 }
