@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import {
-  defaultTitle,
+  blankDocumentValue,
   draftStorageKey,
   initialCodeBlocksValue,
   initialTablesValue,
   initialValue,
+  starterTitle,
 } from "./constants";
 import { saveDraft } from "./storage";
 
@@ -41,8 +42,22 @@ describe("draft storage", () => {
     saveDraft({
       codeBlocks: initialCodeBlocksValue,
       tables: initialTablesValue,
-      title: defaultTitle,
+      title: starterTitle,
       value: initialValue,
+      version: 2,
+    });
+
+    expect(window.localStorage.getItem(draftStorageKey)).toBeNull();
+  });
+
+  test("does not persist an untouched blank draft", () => {
+    window.localStorage.setItem(draftStorageKey, JSON.stringify({ title: "Old title", value: [] }));
+
+    saveDraft({
+      codeBlocks: [],
+      tables: [],
+      title: "",
+      value: blankDocumentValue,
       version: 2,
     });
 

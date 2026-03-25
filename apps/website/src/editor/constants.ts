@@ -9,6 +9,7 @@ export const draftStorageKey = "underwritten.markdown-editor.draft";
 export const appearanceStorageKey = "underwritten.markdown-editor.appearance";
 export const workspaceStorageKey = "underwritten.markdown-editor.workspace";
 export const defaultTitle = "Untitled Document";
+export const starterTitle = "Welcome!";
 export const defaultSidebarCollapsed = false;
 export const defaultSidebarSide: SidebarSide = "left";
 export const defaultPageWidthMode: PageWidthMode = "responsive";

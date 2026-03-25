@@ -593,7 +593,7 @@ export function FileSidebar({
   return (
     <aside
       className={`w-full shrink-0 bg-muted/30 transition-[width,padding] lg:top-0 lg:bottom-0 lg:z-20 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden ${sidebarPositionClass} ${sidebarDividerClass} ${
-        collapsed ? "px-2 py-3 lg:w-16" : "px-4 py-5 lg:w-80"
+        collapsed ? "px-1 py-3 lg:w-14" : "px-4 py-5 lg:w-80"
       }`}
       data-collapsed={collapsed}
       data-mobile-layout="sidebar"
@@ -601,8 +601,10 @@ export function FileSidebar({
       data-testid="file-sidebar"
     >
       <div
-        className={`flex items-start justify-between gap-3 ${
-          collapsed ? "" : "mb-5 border-b border-border/50 pb-4"
+        className={`flex gap-3 ${
+          collapsed
+            ? "justify-center"
+            : "mb-5 items-start justify-between border-b border-border/50 pb-4"
         }`}
       >
         <Button

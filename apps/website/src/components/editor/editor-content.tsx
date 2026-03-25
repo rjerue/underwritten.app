@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useState,
   type CSSProperties,
@@ -7,17 +8,19 @@ import {
   type RefObject,
 } from "react";
 
-import type { Descendant, Editor, NodeEntry, Range } from "slate";
+import { Editor, Range as SlateRange, type Descendant, type NodeEntry } from "slate";
 import { Editable, type RenderElementProps, type RenderLeafProps, Slate } from "slate-react";
 
 import { CodeBlockEditor } from "../code-block-editor";
 import { Button } from "../ui/button";
+import { serializeMarkdownFragment } from "../../editor/markdown";
+import { syncEditorSelectionFromDom } from "../../editor/slate-commands";
 import type { CodeBlockData, CustomElement, TableData, ViewMode } from "../../editor/types";
 
 type EditorContentProps = {
   codeBlocks: CodeBlockData[];
   currentMarkdown: string;
-  decorate: (entry: NodeEntry) => Range[];
+  decorate: (entry: NodeEntry) => SlateRange[];
   editor: Editor;
   onEditorChange: (value: Descendant[]) => void;
   onEditorFocus: () => void;
@@ -300,6 +303,30 @@ function getPlainText(value: Descendant[]) {
   return value
     .map((node) => (node as CustomElement).children.map((child) => child.text).join(""))
     .join("\n");
+}
+
+function shouldBypassMarkdownCopy(activeElement: Element | null) {
+  return (
+    activeElement instanceof HTMLInputElement ||
+    activeElement instanceof HTMLTextAreaElement ||
+    activeElement?.closest('[data-testid="table-editor"], [data-testid="code-block-editor"]') !==
+      null
+  );
+}
+
+function selectionCoversNodeContents(selection: Selection, container: HTMLElement) {
+  if (selection.rangeCount === 0) {
+    return false;
+  }
+
+  const selectedRange = selection.getRangeAt(0);
+  const contentRange = document.createRange();
+  contentRange.selectNodeContents(container);
+
+  return (
+    selectedRange.compareBoundaryPoints(globalThis.Range.START_TO_START, contentRange) <= 0 &&
+    selectedRange.compareBoundaryPoints(globalThis.Range.END_TO_END, contentRange) >= 0
+  );
 }
 
 function getListDepth(indent: string) {
@@ -616,6 +643,47 @@ export function EditorContent({
   value,
   viewMode,
 }: EditorContentProps) {
+  const handleEditableCopy = useCallback(
+    (event: React.ClipboardEvent<HTMLDivElement>) => {
+      if (viewMode !== "write" || shouldBypassMarkdownCopy(document.activeElement)) {
+        return;
+      }
+
+      const domSelection = window.getSelection();
+      if (domSelection && selectionCoversNodeContents(domSelection, event.currentTarget)) {
+        event.preventDefault();
+        event.clipboardData.setData("text/plain", currentMarkdown);
+        event.clipboardData.setData("text/markdown", currentMarkdown);
+        return;
+      }
+
+      syncEditorSelectionFromDom(editor);
+
+      const selection = editor.selection;
+      if (!selection || SlateRange.isCollapsed(selection)) {
+        return;
+      }
+
+      try {
+        const markdown = serializeMarkdownFragment(
+          Editor.fragment(editor, selection),
+          tables,
+          codeBlocks,
+        );
+        if (markdown.length === 0) {
+          return;
+        }
+
+        event.preventDefault();
+        event.clipboardData.setData("text/plain", markdown);
+        event.clipboardData.setData("text/markdown", markdown);
+      } catch {
+        // Fall back to the browser copy behavior if the Slate selection cannot be serialized.
+      }
+    },
+    [codeBlocks, currentMarkdown, editor, tables, viewMode],
+  );
+
   return (
     <>
       <input
@@ -624,7 +692,7 @@ export function EditorContent({
         onChange={(event) => onTitleChange(event.target.value)}
         data-testid="document-title"
         className="mb-4 w-full border-none bg-transparent text-4xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
-        placeholder="Document Title"
+        placeholder="Untitled Document"
       />
 
       {viewMode === "read" ? (
@@ -662,6 +730,7 @@ export function EditorContent({
             className="min-h-[500px] whitespace-pre-wrap font-mono leading-relaxed focus:outline-none"
             spellCheck={viewMode === "write"}
             autoFocus
+            onCopy={handleEditableCopy}
             onFocus={onEditorFocus}
             onKeyDown={onEditableKeyDown}
           />

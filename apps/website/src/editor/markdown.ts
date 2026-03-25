@@ -162,7 +162,15 @@ export function serializeMarkdown(
 ) {
   const normalizedDocumentValue = normalizeDocumentValue(documentValue);
 
-  return normalizedDocumentValue
+  return serializeMarkdownFragment(normalizedDocumentValue, tables, codeBlocks);
+}
+
+export function serializeMarkdownFragment(
+  documentValue: Descendant[],
+  tables: TableData[],
+  codeBlocks: CodeBlockData[],
+) {
+  return documentValue
     .map((node) => {
       const text = getNodeText(node);
       const tableId = getTablePlaceholderId(text);

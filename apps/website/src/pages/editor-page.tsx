@@ -61,6 +61,7 @@ import {
   initialCodeBlocksValue,
   initialTablesValue,
   initialValue,
+  starterTitle,
 } from "../editor/constants";
 import { getPageWidthClass, getSidebarDesktopOffsetClass } from "../editor/layout";
 import {
@@ -505,6 +506,21 @@ function isReplaceShortcut(event: {
   );
 }
 
+function isSelectAllShortcut(event: {
+  altKey: boolean;
+  ctrlKey: boolean;
+  key: string;
+  metaKey: boolean;
+  shiftKey: boolean;
+}) {
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    event.key.toLocaleLowerCase() === "a"
+  );
+}
+
 function getStandaloneImageMarkdownMatch(text: string) {
   return text.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
 }
@@ -878,7 +894,7 @@ export function EditorPage() {
   const initialDraft = useMemo(() => loadDraft(), []);
   const initialAppearance = useMemo(() => loadAppearance(), []);
   const initialWorkspace = useMemo(() => loadWorkspaceSettings(), []);
-  const initialTitle = initialDraft?.title ?? defaultTitle;
+  const initialTitle = initialDraft?.title ?? starterTitle;
   const initialDocumentValue = initialDraft?.value ?? initialValue;
   const initialCodeBlocks = initialDraft?.codeBlocks ?? initialCodeBlocksValue;
   const initialTables = initialDraft?.tables ?? initialTablesValue;
@@ -886,7 +902,11 @@ export function EditorPage() {
     () => serializeMarkdown(initialDocumentValue, initialTables, initialCodeBlocks),
     [initialCodeBlocks, initialDocumentValue, initialTables],
   );
-  const emptyDocumentFingerprint = useMemo(() => buildDocumentFingerprint(defaultTitle, ""), []);
+  const blankDocumentFingerprint = useMemo(() => buildDocumentFingerprint("", ""), []);
+  const starterDocumentFingerprint = useMemo(
+    () => buildDocumentFingerprint(starterTitle, initialMarkdown),
+    [initialMarkdown],
+  );
   const currentDocumentFingerprint = buildDocumentFingerprint(initialTitle, initialMarkdown);
   const [title, setTitle] = useState(initialTitle);
   const [codeBlocks, setCodeBlocks] = useState<CodeBlockData[]>(initialCodeBlocks);
@@ -941,7 +961,11 @@ export function EditorPage() {
   );
   const [lastSavedFingerprint, setLastSavedFingerprint] = useState<string | null>(
     initialWorkspace?.lastSavedFingerprint ??
-      (initialWorkspace?.currentFileName ? currentDocumentFingerprint : null),
+      (initialWorkspace?.currentFileName
+        ? currentDocumentFingerprint
+        : initialDraft
+          ? null
+          : starterDocumentFingerprint),
   );
   const [treeEntriesByPath, setTreeEntriesByPath] = useState<Record<string, BrowserTreeEntry[]>>(
     {},
@@ -1079,7 +1103,7 @@ export function EditorPage() {
       const nextTitle = titleFromFileName(nextFilePath);
       const currentPath = currentFilePathRef.current;
 
-      if (title.trim().length === 0 || title === defaultTitle) {
+      if (title.trim().length === 0 || title === defaultTitle || title === starterTitle) {
         return true;
       }
 
@@ -1226,13 +1250,11 @@ export function EditorPage() {
     treeEntriesByPath,
   ]);
 
-  const hasUnsavedChanges = useMemo(() => {
-    if (currentFilePath === null) {
-      return currentFingerprint !== emptyDocumentFingerprint;
-    }
-
-    return currentFingerprint !== lastSavedFingerprint;
-  }, [currentFilePath, currentFingerprint, emptyDocumentFingerprint, lastSavedFingerprint]);
+  const unsavedBaselineFingerprint = lastSavedFingerprint ?? blankDocumentFingerprint;
+  const hasUnsavedChanges = useMemo(
+    () => currentFingerprint !== unsavedBaselineFingerprint,
+    [currentFingerprint, unsavedBaselineFingerprint],
+  );
 
   useEffect(() => {
     hasUnsavedChangesRef.current = hasUnsavedChanges;
@@ -1791,20 +1813,19 @@ export function EditorPage() {
   const createNewFile = useCallback(() => {
     if (!confirmNavigateAwayFromUnsaved()) return;
 
-    replaceEditorDocument(defaultTitle, blankDocumentValue, [], []);
+    replaceEditorDocument("", blankDocumentValue, [], []);
     setCurrentFilePath(null);
     setSelectedTreePath(null);
     setSelectedTreeKind(null);
-    setLastSavedFingerprint(emptyDocumentFingerprint);
+    setLastSavedFingerprint(blankDocumentFingerprint);
     setLastSavedMarkdown(null);
     clearExternalFileConflict();
     setFileError(null);
   }, [
     blankDocumentValue,
+    blankDocumentFingerprint,
     clearExternalFileConflict,
     confirmNavigateAwayFromUnsaved,
-    defaultTitle,
-    emptyDocumentFingerprint,
     replaceEditorDocument,
   ]);
 
@@ -2156,10 +2177,7 @@ export function EditorPage() {
   const createBridgeDocumentSnapshot = useCallback(
     (markdown: string, includeOutline = false) => {
       const fingerprint = buildDocumentFingerprint(title, markdown);
-      const dirty =
-        currentFilePath === null
-          ? fingerprint !== emptyDocumentFingerprint
-          : fingerprint !== lastSavedFingerprint;
+      const dirty = fingerprint !== (lastSavedFingerprint ?? blankDocumentFingerprint);
 
       return {
         dirty,
@@ -2170,7 +2188,7 @@ export function EditorPage() {
         title,
       };
     },
-    [currentFilePath, emptyDocumentFingerprint, fileStorageMode, lastSavedFingerprint, title],
+    [blankDocumentFingerprint, currentFilePath, fileStorageMode, lastSavedFingerprint, title],
   );
 
   const openWorkspaceFileFromBridge = useCallback(
@@ -3117,6 +3135,21 @@ export function EditorPage() {
       }
 
       if (viewMode !== "write") return;
+
+      if (isSelectAllShortcut(event)) {
+        event.preventDefault();
+
+        const fullSelection = {
+          anchor: Editor.start(editor, []),
+          focus: Editor.end(editor, []),
+        };
+
+        Transforms.select(editor, fullSelection);
+        setActiveSelection(fullSelection);
+        setSelectionRenderVersion((previous) => previous + 1);
+        focusEditorAtCurrentSelection(editor);
+        return;
+      }
 
       syncEditorSelectionFromDom(editor);
 

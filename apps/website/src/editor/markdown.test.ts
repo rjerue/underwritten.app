@@ -1,6 +1,12 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { createParagraph, getNodeText, parseMarkdownDocument, serializeMarkdown } from "./markdown";
+import {
+  createParagraph,
+  getNodeText,
+  parseMarkdownDocument,
+  serializeMarkdown,
+  serializeMarkdownFragment,
+} from "./markdown";
 
 describe("markdown document helpers", () => {
   test("parses fenced code blocks into embedded code block placeholders", () => {
@@ -52,5 +58,33 @@ describe("markdown document helpers", () => {
         ],
       ),
     ).toBe("```mermaid\ngraph TD\nA[Start] --> B[Finish]\n```\n");
+  });
+
+  test("serializes embedded block fragments without appending a trailing blank paragraph", () => {
+    expect(
+      serializeMarkdownFragment(
+        [createParagraph("[TABLE:table-1]"), createParagraph("[CODEBLOCK:code-block-1]")],
+        [
+          {
+            data: [
+              ["Mode", "Best for"],
+              ["write", "Drafting"],
+            ],
+            id: "table-1",
+            position: 0,
+          },
+        ],
+        [
+          {
+            code: "flowchart LR\nA --> B",
+            id: "code-block-1",
+            language: "mermaid",
+            position: 0,
+          },
+        ],
+      ),
+    ).toBe(
+      "| Mode | Best for |\n| --- | --- |\n| write | Drafting |\n```mermaid\nflowchart LR\nA --> B\n```",
+    );
   });
 });

@@ -1,6 +1,7 @@
 import type { AppearanceSettings } from "../components/settings-dialog";
 import {
   appearanceStorageKey,
+  blankDocumentValue,
   defaultAutosaveEnabled,
   defaultMcpEnabled,
   defaultPageWidthMode,
@@ -10,7 +11,7 @@ import {
   initialCodeBlocksValue,
   initialTablesValue,
   initialValue,
-  defaultTitle,
+  starterTitle,
   workspaceStorageKey,
 } from "./constants";
 import type { LegacyStoredDraft, StoredDraft, WorkspaceSettings } from "./types";
@@ -80,12 +81,17 @@ export function loadDraft(): StoredDraft | null {
 export function saveDraft(draft: StoredDraft) {
   try {
     const matchesStarterDraft =
-      draft.title === defaultTitle &&
+      draft.title === starterTitle &&
       JSON.stringify(draft.value) === JSON.stringify(initialValue) &&
       JSON.stringify(draft.tables) === JSON.stringify(initialTablesValue) &&
       JSON.stringify(draft.codeBlocks) === JSON.stringify(initialCodeBlocksValue);
+    const matchesBlankDraft =
+      draft.title.trim().length === 0 &&
+      JSON.stringify(draft.value) === JSON.stringify(blankDocumentValue) &&
+      draft.tables.length === 0 &&
+      draft.codeBlocks.length === 0;
 
-    if (matchesStarterDraft) {
+    if (matchesStarterDraft || matchesBlankDraft) {
       window.localStorage.removeItem(draftStorageKey);
       return;
     }

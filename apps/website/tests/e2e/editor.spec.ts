@@ -184,6 +184,63 @@ test.describe("editor core flows", () => {
     await expect(rawMode(page)).toHaveValue(/```mermaid/);
   });
 
+  test("copying the starter document from write mode uses markdown serialization", async ({
+    context,
+    page,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto("/");
+    await page.getByTestId("editor-surface").click({ position: { x: 80, y: 24 } });
+
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.press("ControlOrMeta+C");
+
+    const copiedText = await page.evaluate(() => navigator.clipboard.readText());
+
+    expect(copiedText).toContain("# Welcome to Underwritten");
+    expect(copiedText).toContain("| Mode | Best for | What you get |");
+    expect(copiedText).toContain("```mermaid");
+    expect(copiedText).not.toContain("[TABLE:table-starter-modes]");
+    expect(copiedText).not.toContain("[CODEBLOCK:code-block-starter-mermaid]");
+    expect(copiedText).not.toContain("Add Row");
+    expect(copiedText).not.toContain("Delete Table");
+    expect(copiedText).not.toContain("Code\nPreview");
+  });
+
+  test("first load stays clean and new files use an untitled placeholder", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => {
+      window.localStorage.removeItem("underwritten.markdown-editor.draft");
+      window.localStorage.removeItem("underwritten.markdown-editor.appearance");
+      window.localStorage.removeItem("underwritten.markdown-editor.workspace");
+    });
+    await page.reload();
+
+    await expect(page.getByTestId("document-title")).toHaveValue("Welcome!");
+    await expect(page.getByTestId("document-title")).toHaveAttribute(
+      "placeholder",
+      "Untitled Document",
+    );
+    await expect(page.getByTestId("unsaved-indicator")).toHaveCount(0);
+    await expect(page.getByTestId("sidebar-save")).toBeEnabled();
+    await expect(
+      page.evaluate(() => window.localStorage.getItem("underwritten.markdown-editor.draft")),
+    ).resolves.toBeNull();
+
+    await page.getByTestId("sidebar-new-file").click();
+
+    await expect(page.getByTestId("document-title")).toHaveValue("");
+    await expect(page.getByTestId("document-title")).toHaveAttribute(
+      "placeholder",
+      "Untitled Document",
+    );
+    await expect(page.getByTestId("unsaved-indicator")).toHaveCount(0);
+    await expect(page.getByTestId("sidebar-save")).toBeEnabled();
+    await expect(
+      page.evaluate(() => window.localStorage.getItem("underwritten.markdown-editor.draft")),
+    ).resolves.toBeNull();
+  });
+
   test("about page is available from the title bar without losing the draft", async ({ page }) => {
     await gotoEditor(page, createDraft(["About page draft"], { title: "Private Notes" }));
 
