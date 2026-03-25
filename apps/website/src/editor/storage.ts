@@ -7,6 +7,10 @@ import {
   defaultShowLineNumbers,
   defaultSidebarCollapsed,
   draftStorageKey,
+  initialCodeBlocksValue,
+  initialTablesValue,
+  initialValue,
+  defaultTitle,
   workspaceStorageKey,
 } from "./constants";
 import type { LegacyStoredDraft, StoredDraft, WorkspaceSettings } from "./types";
@@ -75,6 +79,17 @@ export function loadDraft(): StoredDraft | null {
 
 export function saveDraft(draft: StoredDraft) {
   try {
+    const matchesStarterDraft =
+      draft.title === defaultTitle &&
+      JSON.stringify(draft.value) === JSON.stringify(initialValue) &&
+      JSON.stringify(draft.tables) === JSON.stringify(initialTablesValue) &&
+      JSON.stringify(draft.codeBlocks) === JSON.stringify(initialCodeBlocksValue);
+
+    if (matchesStarterDraft) {
+      window.localStorage.removeItem(draftStorageKey);
+      return;
+    }
+
     window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
   } catch {
     // Ignore storage failures so the editor remains usable in private mode or restricted environments.

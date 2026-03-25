@@ -7,7 +7,7 @@ export function AboutPage() {
   const [selectedMcpClient, setSelectedMcpClient] = useState<McpClient>("codex");
   return (
     <article className="mx-auto max-w-2xl space-y-5" data-testid="about-page">
-      <section className="rounded-[2rem] border border-border/80 bg-gradient-to-br from-background via-background to-muted/40 px-6 py-8 shadow-sm sm:px-8">
+      <section className="rounded-[2rem] border border-border/80 bg-gradient-to-br from-background via-background to-muted/40 px-6 py-8 shadow-sm dark:bg-background dark:bg-none sm:px-8">
         <div className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
           About
         </div>
