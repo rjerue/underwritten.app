@@ -1,5 +1,15 @@
 import { deflateSync, strToU8 } from "fflate";
 
+type PlantUmlMode = "light" | "dark";
+
+const implicitThemeByMode: Record<PlantUmlMode, string> = {
+  dark: "cyborg",
+  light: "spacelab",
+};
+
+const explicitStylingRegex = /^\s*(?:!theme\b|skinparam\b|!include(?:url)?\b)/im;
+const startDirectiveRegex = /^(\s*@start[^\n]*\n?)/i;
+
 function encodePlantUmlValue(value: number) {
   if (value < 10) {
     return String.fromCharCode(48 + value);
@@ -36,6 +46,20 @@ function appendPlantUmlBytes(byte1: number, byte2: number, byte3: number) {
     encodePlantUmlValue(third & 0x3f),
     encodePlantUmlValue(fourth & 0x3f),
   ].join("");
+}
+
+export function preparePlantUmlSource(code: string, mode: PlantUmlMode) {
+  if (explicitStylingRegex.test(code)) {
+    return code;
+  }
+
+  const implicitTheme = `!theme ${implicitThemeByMode[mode]}`;
+  const startDirectiveMatch = code.match(startDirectiveRegex);
+  if (!startDirectiveMatch || typeof startDirectiveMatch[1] !== "string") {
+    return `${implicitTheme}\n${code}`;
+  }
+
+  return code.replace(startDirectiveRegex, `${startDirectiveMatch[1]}${implicitTheme}\n`);
 }
 
 export function buildPlantUmlUrl(code: string, format: "png" | "svg" = "svg") {

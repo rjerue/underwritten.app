@@ -79,6 +79,49 @@ test.describe("code block workflows", () => {
     await expect(rawMode(page)).toHaveValue("```mermaid\ngraph TD\nA[Start] --> B[Finish]\n```\n");
   });
 
+  test("keeps very wide mermaid previews horizontally scrollable instead of shrinking to fit", async ({
+    page,
+  }) => {
+    const wideDiagram = `\`\`\`mermaid
+graph LR
+  A[Start] --> B[Collect Requirements]
+  B --> C[Draft Proposal]
+  C --> D[Internal Review]
+  D --> E[Revise Scope]
+  E --> F[Design Approval]
+  F --> G[Implementation]
+  G --> H[QA Pass]
+  H --> I[Security Review]
+  I --> J[Staging Deploy]
+  J --> K[Stakeholder Review]
+  K --> L[Production Release]
+  L --> M[Postmortem]
+\`\`\``;
+
+    await gotoEditor(page, createDraft([""]));
+
+    await page.getByTestId("mode-raw").click();
+    await rawMode(page).fill(wideDiagram);
+
+    await page.getByTestId("mode-write").click();
+    await page.getByTestId("code-block-panel-preview").click();
+    await expect(page.locator('[data-testid="code-block-diagram-preview"] svg')).toBeVisible();
+
+    const previewMetrics = await page.getByTestId("code-block-diagram-preview").evaluate((node) => {
+      if (!(node instanceof HTMLElement)) {
+        return null;
+      }
+
+      return {
+        clientWidth: node.clientWidth,
+        scrollWidth: node.scrollWidth,
+      };
+    });
+
+    expect(previewMetrics).not.toBeNull();
+    expect(previewMetrics?.scrollWidth ?? 0).toBeGreaterThan(previewMetrics?.clientWidth ?? 0);
+  });
+
   test("renders PlantUML diagrams with a deflated preview URL in write and read mode", async ({
     page,
   }) => {

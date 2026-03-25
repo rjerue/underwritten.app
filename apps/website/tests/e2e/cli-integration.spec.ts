@@ -50,6 +50,26 @@ test.describe("CLI to UI integration", () => {
     await gotoEditor(page, createDraft(["Original text"], { title: "CLI Test" }));
     await waitForBridgeUi(page);
     await page.keyboard.press("Escape");
+    await page.bringToFront();
+    await page.getByTestId("editor-surface").click();
+
+    await expect
+      .poll(
+        async () => {
+          try {
+            return await bridge.service.callTool("get_current_document", {});
+          } catch {
+            return null;
+          }
+        },
+        {
+          timeout: 15_000,
+        },
+      )
+      .toMatchObject({
+        markdown: "Original text",
+        title: "CLI Test",
+      });
 
     // 2. Run the actual CLI binary to replace document content
     const newText = "# Hello from CLI";

@@ -178,7 +178,7 @@ export function WriteModeLinkLeaf({
   const displayLabel = label.trim() || url;
 
   return (
-    <span className="group relative inline">
+    <span className="group relative inline-block max-w-full align-baseline">
       <span
         {...attributes}
         className="text-primary underline decoration-primary/60 underline-offset-4"
@@ -190,9 +190,9 @@ export function WriteModeLinkLeaf({
       >
         {children || displayLabel}
       </span>
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2">
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap">
         <button
-          className="pointer-events-auto select-none rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground opacity-0 shadow-sm transition-[opacity,colors] duration-150 group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-muted hover:text-foreground"
+          className="pointer-events-auto inline-flex w-max select-none whitespace-nowrap rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground opacity-0 shadow-sm transition-[opacity,colors] duration-150 group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-muted hover:text-foreground"
           contentEditable={false}
           data-testid="write-link-edit"
           onClick={(event) => {

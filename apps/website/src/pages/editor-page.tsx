@@ -1074,6 +1074,24 @@ export function EditorPage() {
     currentMarkdownRef.current = currentMarkdown;
   }, [currentMarkdown]);
 
+  const shouldSyncTitleWithFilePath = useCallback(
+    (nextFilePath: string) => {
+      const nextTitle = titleFromFileName(nextFilePath);
+      const currentPath = currentFilePathRef.current;
+
+      if (title.trim().length === 0 || title === defaultTitle) {
+        return true;
+      }
+
+      if (currentPath && title === titleFromFileName(currentPath)) {
+        return true;
+      }
+
+      return title === nextTitle;
+    },
+    [title],
+  );
+
   useEffect(() => {
     if (viewMode !== "raw") return;
 
@@ -1588,7 +1606,11 @@ export function EditorPage() {
         fingerprint?: string;
       },
     ) => {
-      const savedFingerprint = options?.fingerprint ?? currentFingerprint;
+      const shouldSyncTitle =
+        options?.activateSelection !== false && shouldSyncTitleWithFilePath(filePath);
+      const nextTitle = shouldSyncTitle ? titleFromFileName(filePath) : title;
+      const savedFingerprint =
+        options?.fingerprint ?? buildDocumentFingerprint(nextTitle, currentMarkdown);
       const isSavingCurrentFile = currentFilePathRef.current === filePath;
 
       if (isSavingCurrentFile) {
@@ -1629,6 +1651,9 @@ export function EditorPage() {
         await writeFile(fileStorageMode, nativeDirectoryHandle, filePath, currentMarkdown);
 
         if (options?.activateSelection !== false) {
+          if (shouldSyncTitle) {
+            setTitle(nextTitle);
+          }
           setCurrentFilePath(filePath);
           setSelectedTreePath(filePath);
           setSelectedTreeKind("file");
@@ -1672,6 +1697,7 @@ export function EditorPage() {
       loadDirectoryEntries,
       markExternalFileConflict,
       nativeDirectoryHandle,
+      shouldSyncTitleWithFilePath,
     ],
   );
 
@@ -4041,7 +4067,7 @@ export function EditorPage() {
           />
 
           <div className="min-w-0 flex-1 px-6 pt-8 pb-28 lg:px-8 lg:pt-8 lg:pb-8">
-            <div className={getPageWidthClass(pageWidthMode)}>
+            <div className={getPageWidthClass(pageWidthMode)} data-testid="page-width-container">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <BrandNavigation />
                 <div className="flex items-center gap-2">

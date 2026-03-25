@@ -164,7 +164,7 @@ test.describe("editor core flows", () => {
     await expect(page.getByText("Welcome to Underwritten")).toBeVisible();
     await expect(page.getByTestId("table-editor")).toBeVisible();
     await expect(page.getByTestId("code-block-editor")).toBeVisible();
-    await expect(page.getByTestId("code-block-language")).toHaveValue("plantuml");
+    await expect(page.getByTestId("code-block-language")).toHaveValue("mermaid");
     await expect(page.getByTestId("header-cell-1")).toHaveValue("Mode");
     await expect(page.getByTestId("body-cell-1-1")).toHaveValue("write");
     await expect(page.getByTestId("body-cell-2-1")).toHaveValue("read");
@@ -181,7 +181,7 @@ test.describe("editor core flows", () => {
     await expect(rawMode(page)).toHaveValue(/\| write \| Drafting and editing \|/);
     await expect(rawMode(page)).toHaveValue(/\| read \| Reviewing the rendered document \|/);
     await expect(rawMode(page)).toHaveValue(/\| raw \| Working directly in markdown \|/);
-    await expect(rawMode(page)).toHaveValue(/```plantuml/);
+    await expect(rawMode(page)).toHaveValue(/```mermaid/);
   });
 
   test("about page is available from the title bar without losing the draft", async ({ page }) => {
@@ -421,6 +421,35 @@ test.describe("editor core flows", () => {
       );
   });
 
+  test("responsive width stays fixed when the base font size changes", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await gotoEditor(page, createDraft(["Short line", "Another line"]));
+
+    const pageWidthContainer = page.getByTestId("page-width-container");
+    const initialWidth = await pageWidthContainer.evaluate((node) => {
+      return Math.round(node.getBoundingClientRect().width);
+    });
+
+    await expect(page.getByTestId("app-shell")).toHaveAttribute("data-page-width", "responsive");
+    expect(initialWidth).toBe(896);
+
+    await page.getByTestId("open-settings").click();
+    await expect(page.getByTestId("settings-section-appearance")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    const fontSizeSlider = page.getByLabel("Base Font Size");
+    await fontSizeSlider.focus();
+    await page.keyboard.press("End");
+    await expect(fontSizeSlider).toHaveValue("22");
+
+    const updatedWidth = await pageWidthContainer.evaluate((node) => {
+      return Math.round(node.getBoundingClientRect().width);
+    });
+
+    expect(updatedWidth).toBe(initialWidth);
+  });
+
   test("write mode keeps inline formatting on a heading line", async ({ page }) => {
     await gotoEditor(
       page,
@@ -608,6 +637,7 @@ test.describe("editor core flows", () => {
     });
     await page.getByTestId("sidebar-save").click({ button: "right" });
 
+    await expect(page.getByTestId("document-title")).toHaveValue("alpha-note");
     await expect(page.getByTestId("current-file-name")).toContainText("alpha-note.md");
     await expect(page.getByTestId("tree-entry-alpha-note.md")).toBeVisible();
 

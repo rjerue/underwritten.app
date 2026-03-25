@@ -12,5 +12,5 @@ export function getSidebarDesktopOffsetClass(sidebarSide: SidebarSide, sidebarCo
 }
 
 export function getPageWidthClass(pageWidthMode: PageWidthMode) {
-  return pageWidthMode === "fill" ? "w-full" : "mx-auto max-w-4xl";
+  return pageWidthMode === "fill" ? "w-full" : "mx-auto w-full max-w-[896px]";
 }

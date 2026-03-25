@@ -2,7 +2,7 @@ import type { ReactNode, UIEvent } from "react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 
-import { buildPlantUmlUrl } from "../lib/plantuml";
+import { buildPlantUmlUrl, preparePlantUmlSource } from "../lib/plantuml";
 
 import { useTheme } from "./theme-provider";
 import { Button } from "./ui/button";
@@ -239,7 +239,23 @@ async function renderMermaidDiagram(id: string, code: string, resolvedTheme: "li
   });
 
   const { svg } = await mermaid.render(id, code);
-  return svg;
+  const document = new DOMParser().parseFromString(svg, "image/svg+xml");
+  const root = document.documentElement;
+
+  if (root.tagName.toLowerCase() === "svg") {
+    root.style.maxWidth = "none";
+
+    const viewBox = root.getAttribute("viewBox")?.split(/\s+/).map(Number) ?? [];
+    const viewBoxWidth = viewBox.length === 4 ? viewBox[2] : Number.NaN;
+
+    if (Number.isFinite(viewBoxWidth) && viewBoxWidth > 0) {
+      root.setAttribute("width", `${viewBoxWidth}`);
+    }
+
+    root.removeAttribute("height");
+  }
+
+  return root.outerHTML;
 }
 
 export function tokenizeCode(code: string, language: string | null) {
@@ -304,9 +320,13 @@ function DiagramPreview({ code, language }: { code: string; language: string | n
   const [mermaidSvg, setMermaidSvg] = useState<string | null>(null);
   const [mermaidError, setMermaidError] = useState<string | null>(null);
   const [plantUmlError, setPlantUmlError] = useState<string | null>(null);
+  const preparedPlantUmlCode = useMemo(
+    () => (language === "plantuml" ? preparePlantUmlSource(code, resolvedTheme) : code),
+    [code, language, resolvedTheme],
+  );
   const plantUmlUrl = useMemo(
-    () => (language === "plantuml" ? buildPlantUmlUrl(code, "png") : null),
-    [code, language],
+    () => (language === "plantuml" ? buildPlantUmlUrl(preparedPlantUmlCode, "png") : null),
+    [language, preparedPlantUmlCode],
   );
 
   useEffect(() => {
@@ -367,7 +387,7 @@ function DiagramPreview({ code, language }: { code: string; language: string | n
 
     return (
       <div
-        className="overflow-auto rounded-lg border border-border bg-[color:oklch(0.995_0.002_95)] p-4 font-sans dark:bg-[color:oklch(0.205_0.01_265)] [&>svg]:h-auto [&>svg]:max-w-full"
+        className="overflow-auto rounded-lg border border-border bg-[color:oklch(0.995_0.002_95)] p-4 font-sans dark:bg-[color:oklch(0.205_0.01_265)] [&>svg]:block [&>svg]:h-auto [&>svg]:max-w-none"
         dangerouslySetInnerHTML={{ __html: mermaidSvg }}
         data-testid="code-block-diagram-preview"
       />
