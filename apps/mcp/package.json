@@ -1,6 +1,6 @@
 {
   "name": "underwritten-mcp",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": false,
   "license": "MIT",
   "repository": {
@@ -25,7 +25,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist', { force: true, recursive: true })\" && tsc -p tsconfig.build.json"
+    "build": "node -e \"require('node:fs').rmSync('dist', { force: true, recursive: true })\" && tsc -p tsconfig.build.json && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
