@@ -154,6 +154,34 @@ graph LR
     await expect(rawMode(page)).toHaveValue(`${diagramMarkdown}\n`);
   });
 
+  test("renders LaTeX blocks in write preview and read mode", async ({ page }) => {
+    const latexMarkdown = "```latex\n\\\\frac{-b \\\\pm \\\\sqrt{b^2 - 4ac}}{2a}\n```";
+
+    await gotoEditor(page, createDraft([""]));
+
+    await page.getByTestId("mode-raw").click();
+    await rawMode(page).fill(latexMarkdown);
+
+    await page.getByTestId("mode-write").click();
+    await expect(page.getByTestId("code-block-language")).toHaveValue("latex");
+    await expect(page.getByTestId("code-block-panel-preview")).toBeVisible();
+
+    await page.getByTestId("code-block-panel-preview").click();
+    await expect(
+      page.locator('[data-testid="code-block-diagram-preview"] .katex-display'),
+    ).toBeVisible();
+
+    await page.getByTestId("mode-read").click();
+    await expect(
+      page.locator(
+        '[data-testid="read-mode-content"] [data-testid="code-block-diagram-preview"] .katex-display',
+      ),
+    ).toBeVisible();
+
+    await page.getByTestId("mode-raw").click();
+    await expect(rawMode(page)).toHaveValue(`${latexMarkdown}\n`);
+  });
+
   test("deletes an empty code block with backspace", async ({ page }) => {
     await gotoEditor(page, createDraft([""]));
 

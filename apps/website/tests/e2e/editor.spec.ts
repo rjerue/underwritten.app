@@ -260,6 +260,11 @@ test.describe("editor core flows", () => {
         "Underwritten does not have its own backend with independent access to your notes.",
       ),
     ).toBeVisible();
+    await expect(page.getByTestId("markdown-guide")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Supported Markdown" })).toBeVisible();
+    await expect(page.getByText("**bold**")).toBeVisible();
+    await expect(page.getByText("| Name | Role |")).toBeVisible();
+    await expect(page.getByText("[Docs](https://example.com)")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Using Agents & MCP" })).toBeVisible();
     await expect(page.getByTestId("mcp-client-select")).toHaveValue("codex");
     await expect(
@@ -552,6 +557,46 @@ test.describe("editor core flows", () => {
     expect(Number.parseFloat(headingCode?.fontSize ?? "0")).toBeGreaterThan(
       Number.parseFloat(bodyCode?.fontSize ?? "0"),
     );
+  });
+
+  test("write mode keeps markdown delimiters literal inside inline code spans", async ({
+    page,
+  }) => {
+    await gotoEditor(
+      page,
+      createDraft(["`^superscript^ ~subscript~ **bold** _italic_ ~~strike~~ <u>underline</u>`"]),
+    );
+
+    const codeMetrics = await page
+      .locator('[data-testid="editor-surface"] > p span')
+      .evaluateAll((nodes) => {
+        return nodes
+          .map((node) => {
+            const element = node as HTMLElement;
+            const text = element.textContent ?? "";
+            if (!text.includes("^superscript^")) {
+              return null;
+            }
+
+            const style = window.getComputedStyle(element);
+            return {
+              fontStyle: style.fontStyle,
+              fontWeight: style.fontWeight,
+              text,
+              textDecorationLine: style.textDecorationLine,
+              verticalAlign: style.verticalAlign,
+            };
+          })
+          .find(Boolean);
+      });
+
+    expect(codeMetrics).toEqual({
+      fontStyle: "normal",
+      fontWeight: "400",
+      text: "`^superscript^ ~subscript~ **bold** _italic_ ~~strike~~ <u>underline</u>`",
+      textDecorationLine: "none",
+      verticalAlign: "baseline",
+    });
   });
 
   test("ctrl+f opens find and replace in write mode", async ({ page }) => {
@@ -1436,7 +1481,7 @@ test.describe("editor core flows", () => {
       page,
       createDraft([
         "## Heading",
-        "Paragraph with **bold** and *italic* plus `code`.",
+        "Paragraph with **bold** and *italic* plus `code`, H~2~O, X^2^, and `^literal^ ~literal~`.",
         "> Quote block",
         "- Bullet item",
       ]),
@@ -1444,7 +1489,9 @@ test.describe("editor core flows", () => {
 
     await page.getByTestId("mode-read").click();
     await expect(readMode(page)).toContainText("Heading");
-    await expect(readMode(page)).toContainText("Paragraph with bold and italic plus code.");
+    await expect(readMode(page)).toContainText(
+      "Paragraph with bold and italic plus code, H2O, X2, and ^literal^ ~literal~.",
+    );
     await expect(readMode(page)).toContainText("Quote block");
     await expect(readMode(page)).toContainText("Bullet item");
     await expect(readMode(page)).not.toContainText("## Heading");
@@ -1455,6 +1502,9 @@ test.describe("editor core flows", () => {
     await expect(rawMode(page)).toHaveValue(/\*\*bold\*\*/);
     await expect(rawMode(page)).toHaveValue(/\*italic\*/);
     await expect(rawMode(page)).toHaveValue(/`code`/);
+    await expect(rawMode(page)).toHaveValue(/H~2~O/);
+    await expect(rawMode(page)).toHaveValue(/X\^2\^/);
+    await expect(rawMode(page)).toHaveValue(/`\^literal\^ ~literal~`/);
     await expect(rawMode(page)).toHaveValue(/> Quote block/);
     await expect(rawMode(page)).toHaveValue(/- Bullet item/);
   });
@@ -1575,17 +1625,25 @@ test.describe("editor core flows", () => {
 
     await expect(page.getByTestId("toolbar-bold")).toBeVisible();
     await expect(page.getByTestId("toolbar-table")).toBeVisible();
+    await expect(page.getByTestId("toolbar-subscript")).toHaveCount(0);
+    await expect(page.getByTestId("toolbar-superscript")).toHaveCount(0);
 
     await page.getByTestId("mode-read").click();
     await expect(page.getByTestId("toolbar-bold")).toHaveCount(0);
     await expect(page.getByTestId("toolbar-table")).toHaveCount(0);
+    await expect(page.getByTestId("toolbar-subscript")).toHaveCount(0);
+    await expect(page.getByTestId("toolbar-superscript")).toHaveCount(0);
 
     await page.getByTestId("mode-raw").click();
     await expect(page.getByTestId("toolbar-bold")).toHaveCount(0);
     await expect(page.getByTestId("toolbar-table")).toHaveCount(0);
+    await expect(page.getByTestId("toolbar-subscript")).toHaveCount(0);
+    await expect(page.getByTestId("toolbar-superscript")).toHaveCount(0);
 
     await page.getByTestId("mode-write").click();
     await expect(page.getByTestId("toolbar-bold")).toBeVisible();
     await expect(page.getByTestId("toolbar-table")).toBeVisible();
+    await expect(page.getByTestId("toolbar-subscript")).toHaveCount(0);
+    await expect(page.getByTestId("toolbar-superscript")).toHaveCount(0);
   });
 });

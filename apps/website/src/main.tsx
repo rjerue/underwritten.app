@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
 import { ThemeProvider } from "./components/theme-provider";
+import "katex/dist/katex.min.css";
 import "./style.css";
 
 async function clearServiceWorkerState() {

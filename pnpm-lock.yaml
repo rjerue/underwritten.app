@@ -18,6 +18,9 @@ catalogs:
     fflate:
       specifier: ^0.8.2
       version: 0.8.2
+    katex:
+      specifier: ^0.16.43
+      version: 0.16.43
     mermaid:
       specifier: ^11.13.0
       version: 11.13.0
@@ -29,7 +32,7 @@ catalogs:
       version: 5.9.3
     vite-plus:
       specifier: latest
-      version: 0.1.11
+      version: 0.1.12
     wrangler:
       specifier: 4.74.0
       version: 4.74.0
@@ -110,6 +113,9 @@ importers:
       fflate:
         specifier: 'catalog:'
         version: 0.8.2
+      katex:
+        specifier: 'catalog:'
+        version: 0.16.43
       lucide-react:
         specifier: 0.454.0
         version: 0.454.0(react@19.2.4)
@@ -2336,8 +2342,8 @@ packages:
   json-schema-typed@8.0.2:
     resolution: {integrity: sha512-fQhoXdcvc3V28x7C7BMs4P5+kNlgUURe2jmUT1T//oBRMDrqy1QPelJimwZGo7Hg9VPV3EQV5Bnq4hbFy2vetA==}
 
-  katex@0.16.38:
-    resolution: {integrity: sha512-cjHooZUmIAUmDsHBN+1n8LaZdpmbj03LtYeYPyuYB7OuloiaeaV6N4LcfjcnHVzGWjVQmKrxxTrpDcmSzEZQwQ==}
+  katex@0.16.43:
+    resolution: {integrity: sha512-K7NL5JtGrFEglipOAjY4UYA69CnTuNmjArxeXF6+bw7h2OGySUPv6QWRjfb1gmutJ4Mw/qLeBqiROOEDULp4nA==}
     hasBin: true
 
   khroma@2.1.0:
@@ -4869,7 +4875,7 @@ snapshots:
 
   json-schema-typed@8.0.2: {}
 
-  katex@0.16.38:
+  katex@0.16.43:
     dependencies:
       commander: 8.3.0
 
@@ -5022,7 +5028,7 @@ snapshots:
       dagre-d3-es: 7.0.14
       dayjs: 1.11.20
       dompurify: 3.3.3
-      katex: 0.16.38
+      katex: 0.16.43
       khroma: 2.1.0
       lodash-es: 4.17.23
       marked: 16.4.2

@@ -60,7 +60,7 @@ export function normalizeExternalUrl(value: string) {
 function renderInline(text: string): ReactNode {
   const parts: ReactNode[] = [];
   const regex =
-    /!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*|~~(.+?)~~|<u>(.+?)<\/u>|_(.+?)_|(?<!\*)\*([^*]+?)\*(?!\*)|`(.+?)`/g;
+    /!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*|~~(.+?)~~|(?<!~)~([^~\n]+?)~(?!~)|\^([^^\n]+?)\^|<u>(.+?)<\/u>|_(.+?)_|(?<!\*)\*([^*]+?)\*(?!\*)|`(.+?)`/g;
   let last = 0;
   let match: RegExpExecArray | null;
 
@@ -106,20 +106,24 @@ function renderInline(text: string): ReactNode {
     } else if (match[6] !== undefined) {
       parts.push(<s key={match.index}>{match[6]}</s>);
     } else if (match[7] !== undefined) {
+      parts.push(<sub key={match.index}>{match[7]}</sub>);
+    } else if (match[8] !== undefined) {
+      parts.push(<sup key={match.index}>{match[8]}</sup>);
+    } else if (match[9] !== undefined) {
       parts.push(
         <span key={match.index} className="underline underline-offset-4">
-          {match[7]}
+          {match[9]}
         </span>,
       );
-    } else if (match[8] !== undefined || match[9] !== undefined) {
-      parts.push(<em key={match.index}>{match[8] ?? match[9]}</em>);
-    } else if (match[10] !== undefined) {
+    } else if (match[10] !== undefined || match[11] !== undefined) {
+      parts.push(<em key={match.index}>{match[10] ?? match[11]}</em>);
+    } else if (match[12] !== undefined) {
       parts.push(
         <code
           key={match.index}
           className="rounded bg-muted px-1 py-0.5 text-sm font-mono [overflow-wrap:anywhere]"
         >
-          {match[10]}
+          {match[12]}
         </code>,
       );
     }
@@ -584,16 +588,26 @@ export function defaultRenderLeaf({ attributes, children, leaf }: RenderLeafProp
     textDecorations.push("line-through");
   }
 
-  if (textDecorations.length > 0) {
-    style.textDecoration = textDecorations.join(" ");
-  }
-
   if ("code" in leaf && leaf.code) {
     className += " rounded bg-muted px-1 py-0.5 font-mono";
 
     if (!("header" in leaf && leaf.header)) {
       className += " text-sm";
     }
+  }
+
+  if ("subscript" in leaf && leaf.subscript) {
+    style.fontSize = "0.75em";
+    style.verticalAlign = "sub";
+  }
+
+  if ("superscript" in leaf && leaf.superscript) {
+    style.fontSize = "0.75em";
+    style.verticalAlign = "super";
+  }
+
+  if (textDecorations.length > 0) {
+    style.textDecoration = textDecorations.join(" ");
   }
 
   if ("blockquote" in leaf && leaf.blockquote) {

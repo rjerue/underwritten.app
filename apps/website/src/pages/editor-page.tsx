@@ -63,6 +63,7 @@ import {
   initialValue,
   starterTitle,
 } from "../editor/constants";
+import { buildInlineMarkdownRanges } from "../editor/inline-markdown";
 import { getPageWidthClass, getSidebarDesktopOffsetClass } from "../editor/layout";
 import {
   buildDocumentFingerprint,
@@ -3355,125 +3356,12 @@ export function EditorPage() {
 
   const decorate = useCallback(
     ([node, path]: NodeEntry) => {
-      const ranges: Range[] = [];
-
       if (!Text.isText(node)) {
-        return ranges;
+        return [] satisfies Range[];
       }
 
       const text = node.text;
-
-      const boldRegex = /\*\*(.*?)\*\*/g;
-      let match: RegExpExecArray | null;
-      while ((match = boldRegex.exec(text)) !== null) {
-        ranges.push({
-          anchor: { path, offset: match.index },
-          focus: { path, offset: match.index + match[0].length },
-          bold: true,
-        } as Range & { bold: boolean });
-      }
-
-      const italicRegex = /(?<!\*)\*([^*]+?)\*(?!\*)|_([^_]+?)_/g;
-      while ((match = italicRegex.exec(text)) !== null) {
-        ranges.push({
-          anchor: { path, offset: match.index },
-          focus: { path, offset: match.index + match[0].length },
-          italic: true,
-        } as Range & { italic: boolean });
-      }
-
-      const strikeRegex = /~~(.*?)~~/g;
-      while ((match = strikeRegex.exec(text)) !== null) {
-        ranges.push({
-          anchor: { path, offset: match.index },
-          focus: { path, offset: match.index + match[0].length },
-          strikethrough: true,
-        } as Range & { strikethrough: boolean });
-      }
-
-      const underlineRegex = /<u>(.*?)<\/u>/g;
-      while ((match = underlineRegex.exec(text)) !== null) {
-        ranges.push({
-          anchor: { path, offset: match.index },
-          focus: { path, offset: match.index + match[0].length },
-          underline: true,
-        } as Range & { underline: boolean });
-      }
-
-      const codeRegex = /`([^`]+?)`/g;
-      while ((match = codeRegex.exec(text)) !== null) {
-        ranges.push({
-          anchor: { path, offset: match.index },
-          focus: { path, offset: match.index + match[0].length },
-          code: true,
-        } as Range & { code: boolean });
-      }
-
-      const headerRegex = /^(#{1,6})\s+(.*)$/gm;
-      while ((match = headerRegex.exec(text)) !== null) {
-        ranges.push({
-          anchor: { path, offset: match.index },
-          focus: { path, offset: match.index + match[0].length },
-          header: true,
-          headerLevel: match[1]?.length ?? 1,
-        } as Range & { header: boolean; headerLevel: number });
-      }
-
-      const quoteRegex = /^>\s+(.*)$/gm;
-      while ((match = quoteRegex.exec(text)) !== null) {
-        ranges.push({
-          anchor: { path, offset: match.index },
-          focus: { path, offset: match.index + match[0].length },
-          blockquote: true,
-        } as Range & { blockquote: boolean });
-      }
-
-      const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-      while ((match = linkRegex.exec(text)) !== null) {
-        if (text[match.index - 1] === "!") {
-          continue;
-        }
-
-        const normalizedUrl = normalizeExternalUrl(match[2] ?? "");
-        if (!normalizedUrl) {
-          continue;
-        }
-
-        const label = match[1] ?? "";
-        const labelStartOffset = match.index + 1;
-        const labelEndOffset = labelStartOffset + label.length;
-        const fullMatchEndOffset = match.index + match[0].length;
-
-        ranges.push({
-          anchor: { path, offset: match.index },
-          focus: { path, offset: labelStartOffset },
-          hiddenMarkdown: true,
-        } as Range & { hiddenMarkdown: boolean });
-
-        ranges.push({
-          anchor: { path, offset: labelStartOffset },
-          focus: { path, offset: labelEndOffset },
-          linkLabel: label,
-          linkPreview: true,
-          linkUrl: normalizedUrl,
-          previewEndOffset: fullMatchEndOffset,
-          previewPath: path,
-          previewStartOffset: match.index,
-        } as Range & {
-          linkLabel: string;
-          linkPreview: boolean;
-          linkUrl: string;
-          previewEndOffset: number;
-          previewPath: Path;
-          previewStartOffset: number;
-        });
-
-        ranges.push({
-          anchor: { path, offset: labelEndOffset },
-          focus: { path, offset: fullMatchEndOffset },
-          hiddenMarkdown: true,
-        } as Range & { hiddenMarkdown: boolean });
-      }
+      const ranges = buildInlineMarkdownRanges(text, path);
 
       if (findReplaceOpen && viewMode === "write" && findQuery.length > 0) {
         for (const findMatch of findTextMatchRanges(text, findQuery)) {

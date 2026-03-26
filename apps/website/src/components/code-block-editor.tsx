@@ -1,6 +1,7 @@
 import type { ReactNode, UIEvent } from "react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
+import katex from "katex";
 
 import { buildPlantUmlUrl, preparePlantUmlSource } from "../lib/plantuml";
 
@@ -55,6 +56,7 @@ const languageOptions: LanguageOption[] = [
   { aliases: ["julia", "jl"], id: "julia", label: "Julia" },
   { aliases: ["kotlin", "kt", "kts"], id: "kotlin", label: "Kotlin" },
   { aliases: ["lua"], id: "lua", label: "Lua" },
+  { aliases: ["latex", "tex"], id: "latex", label: "LaTeX" },
   { aliases: ["markdown", "md"], id: "md", label: "Markdown" },
   { aliases: ["matlab"], id: "matlab", label: "MATLAB" },
   { aliases: ["mermaid", "mmd"], id: "mermaid", label: "Mermaid" },
@@ -105,6 +107,8 @@ const haskellRegex =
   /(?<comment>--.*$|\{-[\s\S]*?-\})|(?<string>"(?:\\.|[^"])*"|'(?:\\.|[^'])*')|(?<number>\b\d+(?:\.\d+)?\b)|(?<keyword>\b(?:case|class|data|default|deriving|do|else|if|import|in|infix|instance|let|module|newtype|of|then|type|where)\b)|(?<builtin>\b(?:Bool|Either|IO|Int|Just|Left|Maybe|Nothing|Right|String)\b)/gm;
 const matlabRegex =
   /(?<comment>%.*$)|(?<string>"(?:\\.|[^"])*"|'(?:''|[^'])*')|(?<number>\b\d+(?:\.\d+)?\b)|(?<keyword>\b(?:break|case|catch|classdef|continue|else|elseif|end|for|function|global|if|otherwise|parfor|persistent|return|spmd|switch|try|while)\b)|(?<builtin>\b(?:disp|fprintf|length|mean|plot|size|sum)\b)/gm;
+const latexRegex =
+  /(?<comment>%.*$)|(?<string>\\(?:text|mathrm|mathbf|mathit|operatorname)\{[^}]*\})|(?<number>\b\d+(?:\.\d+)?\b)|(?<keyword>\\[A-Za-z]+)|(?<builtin>[{}_^&])/gm;
 const yamlRegex =
   /(?<comment>#.*$)|(?<string>"(?:\\.|[^"])*"|'(?:\\.|[^'])*')|(?<number>\b\d+(?:\.\d+)?\b)|(?<keyword>\b(?:false|null|true)\b)|(?<builtin>^[A-Za-z0-9_-]+:|-\s)/gm;
 
@@ -183,6 +187,8 @@ function getHighlightRegex(language: string | null) {
       return jsonRegex;
     case "lua":
       return luaRegex;
+    case "latex":
+      return latexRegex;
     case "matlab":
       return matlabRegex;
     case "md":
@@ -216,8 +222,8 @@ function getTokenClassName(type: string) {
   }
 }
 
-function isDiagramLanguage(language: string | null) {
-  return language === "mermaid" || language === "plantuml";
+function isPreviewableLanguage(language: string | null) {
+  return language === "latex" || language === "mermaid" || language === "plantuml";
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -256,6 +262,16 @@ async function renderMermaidDiagram(id: string, code: string, resolvedTheme: "li
   }
 
   return root.outerHTML;
+}
+
+function renderLatex(code: string) {
+  return katex.renderToString(code, {
+    displayMode: true,
+    output: "htmlAndMathml",
+    strict: "warn",
+    throwOnError: false,
+    trust: false,
+  });
 }
 
 export function tokenizeCode(code: string, language: string | null) {
@@ -314,9 +330,11 @@ function HighlightedCode({
   ));
 }
 
-function DiagramPreview({ code, language }: { code: string; language: string | null }) {
+function CodeBlockPreview({ code, language }: { code: string; language: string | null }) {
   const diagramId = useId().replaceAll(":", "-");
   const { resolvedTheme } = useTheme();
+  const [latexHtml, setLatexHtml] = useState<string | null>(null);
+  const [latexError, setLatexError] = useState<string | null>(null);
   const [mermaidSvg, setMermaidSvg] = useState<string | null>(null);
   const [mermaidError, setMermaidError] = useState<string | null>(null);
   const [plantUmlError, setPlantUmlError] = useState<string | null>(null);
@@ -328,6 +346,22 @@ function DiagramPreview({ code, language }: { code: string; language: string | n
     () => (language === "plantuml" ? buildPlantUmlUrl(preparedPlantUmlCode, "png") : null),
     [language, preparedPlantUmlCode],
   );
+
+  useEffect(() => {
+    if (language !== "latex") {
+      setLatexHtml(null);
+      setLatexError(null);
+      return;
+    }
+
+    try {
+      setLatexHtml(renderLatex(code));
+      setLatexError(null);
+    } catch (error) {
+      setLatexHtml(null);
+      setLatexError(getErrorMessage(error, "Unable to render LaTeX preview."));
+    }
+  }, [code, language]);
 
   useEffect(() => {
     setPlantUmlError(null);
@@ -394,6 +428,32 @@ function DiagramPreview({ code, language }: { code: string; language: string | n
     );
   }
 
+  if (language === "latex") {
+    if (latexError) {
+      return (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {latexError}
+        </div>
+      );
+    }
+
+    if (!latexHtml) {
+      return (
+        <div className="rounded-lg border border-border bg-background/80 px-4 py-8 text-center text-sm text-muted-foreground">
+          Rendering LaTeX preview...
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className="overflow-auto rounded-lg border border-border bg-[color:oklch(0.995_0.002_95)] px-4 py-6 text-center dark:bg-[color:oklch(0.205_0.01_265)] [&_.katex-display]:my-0 [&_.katex]:text-[1.05rem]"
+        dangerouslySetInnerHTML={{ __html: latexHtml }}
+        data-testid="code-block-diagram-preview"
+      />
+    );
+  }
+
   if (plantUmlError) {
     return (
       <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -438,7 +498,7 @@ export function CodeBlockEditor({
   const highlightRef = useRef<HTMLPreElement | null>(null);
   const normalizedLanguage = normalizeCodeLanguage(language);
   const [activePanel, setActivePanel] = useState<CodeBlockPanel>("code");
-  const canPreviewDiagram = isDiagramLanguage(normalizedLanguage);
+  const canPreview = isPreviewableLanguage(normalizedLanguage);
   const extraLanguageOption = useMemo(() => {
     if (!normalizedLanguage) return null;
     if (languageOptions.some((option) => option.id === normalizedLanguage)) {
@@ -459,10 +519,10 @@ export function CodeBlockEditor({
   );
 
   useEffect(() => {
-    if (!canPreviewDiagram && activePanel !== "code") {
+    if (!canPreview && activePanel !== "code") {
       setActivePanel("code");
     }
-  }, [activePanel, canPreviewDiagram]);
+  }, [activePanel, canPreview]);
 
   const syncCodeSurface = useCallback(() => {
     const textarea = textareaRef.current;
@@ -487,7 +547,7 @@ export function CodeBlockEditor({
 
   const focusEditableSurface = useCallback(
     (edge: "start" | "end") => {
-      if (canPreviewDiagram && activePanel === "preview") {
+      if (canPreview && activePanel === "preview") {
         setActivePanel("code");
         requestAnimationFrame(() => {
           focusTextarea(edge);
@@ -497,7 +557,7 @@ export function CodeBlockEditor({
 
       focusTextarea(edge);
     },
-    [activePanel, canPreviewDiagram, focusTextarea],
+    [activePanel, canPreview, focusTextarea],
   );
 
   useEffect(() => {
@@ -602,12 +662,12 @@ export function CodeBlockEditor({
     </div>
   );
 
-  const diagramPreview = canPreviewDiagram ? (
+  const previewPanel = canPreview ? (
     <div className="bg-[color:oklch(0.995_0.002_95)] p-4 dark:bg-[color:oklch(0.205_0.01_265)]">
-      <DiagramPreview code={code} language={normalizedLanguage} />
+      <CodeBlockPreview code={code} language={normalizedLanguage} />
     </div>
   ) : null;
-  const showDiagramPreview = canPreviewDiagram && (readOnly || activePanel === "preview");
+  const showPreview = canPreview && (readOnly || activePanel === "preview");
 
   return (
     <div
@@ -652,7 +712,7 @@ export function CodeBlockEditor({
               )}
             </div>
 
-            {readOnly || !canPreviewDiagram ? null : (
+            {readOnly || !canPreview ? null : (
               <div className="inline-flex items-center rounded-md border border-border bg-background p-0.5 text-xs">
                 <button
                   className={`rounded px-2 py-1 transition-colors ${
@@ -707,7 +767,7 @@ export function CodeBlockEditor({
           )}
         </div>
 
-        {showDiagramPreview ? diagramPreview : codeSurface}
+        {showPreview ? previewPanel : codeSurface}
       </div>
     </div>
   );
