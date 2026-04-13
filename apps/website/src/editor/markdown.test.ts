@@ -2,8 +2,11 @@ import { describe, expect, test } from "vite-plus/test";
 
 import {
   createParagraph,
+  getDocumentFormatFromFilePath,
   getNodeText,
+  parseDocumentContent,
   parseMarkdownDocument,
+  sanitizeFilePath,
   serializeMarkdown,
   serializeMarkdownFragment,
 } from "./markdown";
@@ -86,5 +89,25 @@ describe("markdown document helpers", () => {
     ).toBe(
       "| Mode | Best for |\n| --- | --- |\n| write | Drafting |\n```mermaid\nflowchart LR\nA --> B\n```",
     );
+  });
+
+  test("keeps explicit non-markdown file extensions when sanitizing file paths", () => {
+    expect(sanitizeFilePath("config.json")).toBe("config.json");
+    expect(sanitizeFilePath("notes/daily")).toBe("notes/daily.md");
+  });
+
+  test("detects markdown file extensions", () => {
+    expect(getDocumentFormatFromFilePath("notes/daily.md")).toBe("markdown");
+    expect(getDocumentFormatFromFilePath("notes/daily.markdown")).toBe("markdown");
+    expect(getDocumentFormatFromFilePath("config.json")).toBe("plain-text");
+  });
+
+  test("parses plain text without importing markdown tables or code blocks", () => {
+    const content = '| Name | Role |\n| --- | --- |\n```json\n{"ok": true}\n```';
+    const draft = parseDocumentContent(content, "plain-text");
+
+    expect(draft.tables).toEqual([]);
+    expect(draft.codeBlocks).toEqual([]);
+    expect(serializeMarkdown(draft.value, draft.tables, draft.codeBlocks)).toBe(content);
   });
 });

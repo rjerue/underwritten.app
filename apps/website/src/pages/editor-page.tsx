@@ -69,6 +69,7 @@ import {
   buildDocumentFingerprint,
   createParagraph,
   dirname,
+  getDocumentFormatFromFilePath,
   getCodeBlockPlaceholderId,
   getMarkdownCodeFenceLanguage,
   getNodeText,
@@ -77,7 +78,7 @@ import {
   isParagraphNode,
   joinPath,
   normalizeDocumentValue,
-  parseMarkdownDocument,
+  parseDocumentContent,
   replacePathPrefix,
   sanitizeFilePath,
   sanitizeFolderPath,
@@ -99,7 +100,7 @@ import {
   saveDraft,
   saveWorkspaceSettings,
 } from "../editor/storage";
-import type { CodeBlockData, TableData, ViewMode } from "../editor/types";
+import type { CodeBlockData, DocumentFormat, TableData, ViewMode } from "../editor/types";
 import {
   createDirectory,
   deletePath,
@@ -912,6 +913,7 @@ export function EditorPage() {
   const [title, setTitle] = useState(initialTitle);
   const [codeBlocks, setCodeBlocks] = useState<CodeBlockData[]>(initialCodeBlocks);
   const [value, setValue] = useState<Descendant[]>(initialDocumentValue);
+  const [documentFormat, setDocumentFormat] = useState<DocumentFormat>("markdown");
   const [viewMode, setViewMode] = useState<ViewMode>("write");
   const [tables, setTables] = useState<TableData[]>(initialTables);
   const [showTableSelector, setShowTableSelector] = useState(false);
@@ -1572,8 +1574,9 @@ export function EditorPage() {
   }, []);
 
   const loadCurrentFileFromDisk = useCallback(
-    (filePath: string, markdown: string) => {
-      const parsedDocument = parseMarkdownDocument(markdown);
+    (filePath: string, content: string) => {
+      const nextDocumentFormat = getDocumentFormatFromFilePath(filePath);
+      const parsedDocument = parseDocumentContent(content, nextDocumentFormat);
       const nextTitle = titleFromFileName(filePath);
 
       replaceEditorDocument(
@@ -1583,10 +1586,14 @@ export function EditorPage() {
         parsedDocument.codeBlocks,
       );
       setCurrentFilePath(filePath);
+      setDocumentFormat(nextDocumentFormat);
       setSelectedTreePath(filePath);
       setSelectedTreeKind("file");
-      setLastSavedFingerprint(buildDocumentFingerprint(nextTitle, markdown));
-      setLastSavedMarkdown(markdown);
+      if (nextDocumentFormat === "plain-text") {
+        setViewMode("raw");
+      }
+      setLastSavedFingerprint(buildDocumentFingerprint(nextTitle, content));
+      setLastSavedMarkdown(content);
       clearExternalFileConflict();
       setFileError(null);
     },
@@ -1672,12 +1679,17 @@ export function EditorPage() {
 
       try {
         await writeFile(fileStorageMode, nativeDirectoryHandle, filePath, currentMarkdown);
+        const nextDocumentFormat = getDocumentFormatFromFilePath(filePath);
 
         if (options?.activateSelection !== false) {
           if (shouldSyncTitle) {
             setTitle(nextTitle);
           }
           setCurrentFilePath(filePath);
+          setDocumentFormat(nextDocumentFormat);
+          if (nextDocumentFormat === "plain-text") {
+            setViewMode("raw");
+          }
           setSelectedTreePath(filePath);
           setSelectedTreeKind("file");
           setLastSavedFingerprint(savedFingerprint);
@@ -1816,6 +1828,8 @@ export function EditorPage() {
 
     replaceEditorDocument("", blankDocumentValue, [], []);
     setCurrentFilePath(null);
+    setDocumentFormat("markdown");
+    setViewMode("write");
     setSelectedTreePath(null);
     setSelectedTreeKind(null);
     setLastSavedFingerprint(blankDocumentFingerprint);
@@ -2231,7 +2245,7 @@ export function EditorPage() {
     async (path: string, content = "", openAfterCreate = false) => {
       const sanitizedPath = sanitizeFilePath(path);
       if (!sanitizedPath) {
-        throw new Error("A valid markdown file path is required.");
+        throw new Error("A valid file path is required.");
       }
 
       if (openAfterCreate && hasUnsavedChanges && currentFilePath !== sanitizedPath) {
@@ -2425,7 +2439,7 @@ export function EditorPage() {
       if (typeof path === "string") {
         const sanitizedPath = sanitizeFilePath(path);
         if (!sanitizedPath) {
-          throw new Error("A valid markdown file path is required.");
+          throw new Error("A valid file path is required.");
         }
 
         const saved = await writeCurrentFileToPath(sanitizedPath);
@@ -2537,7 +2551,7 @@ export function EditorPage() {
 
   const replaceCurrentDocumentFromBridge = useCallback(
     async (markdown: string, action: BridgeFlashbar["action"] = "replace_current_document") => {
-      const parsedDocument = parseMarkdownDocument(markdown);
+      const parsedDocument = parseDocumentContent(markdown, documentFormat);
 
       replaceEditorDocument(
         title,
@@ -2553,7 +2567,7 @@ export function EditorPage() {
 
       return createBridgeDocumentSnapshot(markdown);
     },
-    [createBridgeDocumentSnapshot, replaceEditorDocument, title],
+    [createBridgeDocumentSnapshot, documentFormat, replaceEditorDocument, title],
   );
 
   const applyMarkdownEditsFromBridge = useCallback(
@@ -3388,19 +3402,27 @@ export function EditorPage() {
     [activeWriteFindMatch, findQuery, findReplaceOpen, viewMode],
   );
 
-  const handleRawMarkdownChange = useCallback((nextMarkdown: string) => {
-    const parsedDocument = parseMarkdownDocument(nextMarkdown);
-    codeBlocksRef.current = parsedDocument.codeBlocks;
-    tablesRef.current = parsedDocument.tables;
-    setValue(normalizeDocumentValue(parsedDocument.value));
-    setCodeBlocks(parsedDocument.codeBlocks);
-    setTables(parsedDocument.tables);
-    setTableRenderVersion((previous) => previous + 1);
-    setShowTableSelector(false);
-  }, []);
+  const handleRawMarkdownChange = useCallback(
+    (nextMarkdown: string) => {
+      const parsedDocument = parseDocumentContent(nextMarkdown, documentFormat);
+      codeBlocksRef.current = parsedDocument.codeBlocks;
+      tablesRef.current = parsedDocument.tables;
+      setValue(normalizeDocumentValue(parsedDocument.value));
+      setCodeBlocks(parsedDocument.codeBlocks);
+      setTables(parsedDocument.tables);
+      setTableRenderVersion((previous) => previous + 1);
+      setShowTableSelector(false);
+    },
+    [documentFormat],
+  );
 
   const handleViewModeChange = useCallback(
     (nextMode: ViewMode) => {
+      if (documentFormat === "plain-text" && nextMode !== "raw") {
+        setViewMode("raw");
+        return;
+      }
+
       if (viewMode === "write" && nextMode !== "write") {
         requestAnimationFrame(() => {
           flushSync(() => {
@@ -3413,7 +3435,7 @@ export function EditorPage() {
 
       setViewMode(nextMode);
     },
-    [editor, viewMode],
+    [documentFormat, editor, viewMode],
   );
 
   const revealWriteFindMatch = useCallback(
@@ -4009,6 +4031,7 @@ export function EditorPage() {
               <div className="sticky top-0 z-30 mb-4">
                 <div className="relative -mx-2 overflow-visible bg-gradient-to-b from-background via-background/95 to-background/75 px-2 pt-2 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                   <EditorToolbar
+                    documentFormat={documentFormat}
                     editor={editor}
                     onInsertCodeBlock={() => insertCodeBlock()}
                     onInsertTable={insertTable}

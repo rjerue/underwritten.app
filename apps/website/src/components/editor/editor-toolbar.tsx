@@ -19,7 +19,7 @@ import { ReactEditor } from "slate-react";
 
 import { Button } from "../ui/button";
 import { TableSizeSelector } from "../table-editor";
-import type { ViewMode } from "../../editor/types";
+import type { DocumentFormat, ViewMode } from "../../editor/types";
 import {
   getSelectedText,
   insertBlockToken,
@@ -31,6 +31,7 @@ import {
 } from "../../editor/slate-commands";
 
 type EditorToolbarProps = {
+  documentFormat: DocumentFormat;
   editor: Editor;
   onInsertCodeBlock: () => void;
   onInsertTable: (rows: number, cols: number) => void;
@@ -41,6 +42,7 @@ type EditorToolbarProps = {
 };
 
 export function EditorToolbar({
+  documentFormat,
   editor,
   onInsertCodeBlock,
   onInsertTable,
@@ -49,6 +51,9 @@ export function EditorToolbar({
   viewMode,
   onViewModeChange,
 }: EditorToolbarProps) {
+  const availableViewModes: ViewMode[] =
+    documentFormat === "markdown" ? ["write", "read", "raw"] : ["raw"];
+
   const refocusEditor = () => {
     requestAnimationFrame(() => {
       try {
@@ -132,7 +137,7 @@ export function EditorToolbar({
         className="flex items-center overflow-hidden rounded-md border border-border text-sm"
         data-testid="view-mode-toggle"
       >
-        {(["write", "read", "raw"] as ViewMode[]).map((mode) => (
+        {availableViewModes.map((mode) => (
           <button
             key={mode}
             type="button"

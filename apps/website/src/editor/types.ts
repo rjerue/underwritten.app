@@ -8,6 +8,8 @@ import type { FileStorageMode } from "../lib/file-system";
 
 export type ViewMode = "write" | "read" | "raw";
 
+export type DocumentFormat = "markdown" | "plain-text";
+
 export type TableData = {
   id: string;
   data: string[][];

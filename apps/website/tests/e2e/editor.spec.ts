@@ -139,6 +139,27 @@ async function writeWorkspaceFile(page: Page, fileName: string, content: string)
   );
 }
 
+async function writeWorkspaceBytes(page: Page, fileName: string, content: number[]) {
+  await page.evaluate(
+    async ({ fileName, nextContent }: { fileName: string; nextContent: number[] }) => {
+      const storageManager = navigator.storage as StorageManager & {
+        getDirectory?: () => Promise<FileSystemDirectoryHandle>;
+      };
+
+      if (typeof storageManager.getDirectory !== "function") {
+        return;
+      }
+
+      const root = await storageManager.getDirectory();
+      const fileHandle = await root.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(new Uint8Array(nextContent));
+      await writable.close();
+    },
+    { fileName, nextContent: content },
+  );
+}
+
 async function readWorkspaceFile(page: Page, fileName: string) {
   return await page.evaluate(async (targetFileName: string) => {
     const storageManager = navigator.storage as StorageManager & {
@@ -770,6 +791,52 @@ test.describe("editor core flows", () => {
     await expect(rawMode(page)).toHaveValue(/First draft/);
     await expect(rawMode(page)).not.toHaveValue(/Unsaved buffer/);
     await expect(page.getByTestId("current-file-name")).toContainText("alpha-note.md");
+  });
+
+  test("opens JSON as plain text and rejects binary files", async ({ page }) => {
+    const jsonContent = '{\n  "| table |": "| --- |",\n  "fence": "```json"\n}';
+
+    await gotoEditor(page, createDraft([""], { title: "" }));
+    await writeWorkspaceFile(page, "config.json", jsonContent);
+    await writeWorkspaceBytes(page, "image.png", [0x89, 0x50, 0x4e, 0x47, 0x00]);
+    await page.reload();
+
+    await page.getByTestId("tree-entry-config.json").click();
+    await expect(page.getByTestId("current-file-name")).toContainText("config.json");
+    await expect(page.getByTestId("mode-raw")).toBeVisible();
+    await expect(page.getByTestId("mode-write")).toHaveCount(0);
+    await expect(rawMode(page)).toHaveValue(jsonContent);
+
+    const nextJsonContent = '{\n  "edited": true,\n  "| table |": "| --- |"\n}';
+    await rawMode(page).fill(nextJsonContent);
+    await page.getByTestId("sidebar-save").click();
+    await expect
+      .poll(async () => await readWorkspaceFile(page, "config.json"))
+      .toBe(nextJsonContent);
+
+    await page.getByTestId("tree-entry-image.png").click();
+    await expect(page.getByTestId("file-error")).toHaveText(
+      "Cannot open image.png because it appears to be a binary file.",
+    );
+    await expect(page.getByTestId("current-file-name")).toContainText("config.json");
+  });
+
+  test("save as preserves explicit non-markdown file extensions", async ({ page }) => {
+    const jsonContent = '{\n  "savedAs": "json"\n}';
+
+    await gotoEditor(page, createDraft([""], { title: "" }));
+    await page.getByTestId("mode-raw").click();
+    await rawMode(page).fill(jsonContent);
+
+    page.once("dialog", async (dialog) => {
+      expect(dialog.type()).toBe("prompt");
+      await dialog.accept("config.json");
+    });
+    await page.getByTestId("sidebar-save").click({ button: "right" });
+
+    await expect(page.getByTestId("current-file-name")).toContainText("config.json");
+    await expect(page.getByTestId("tree-entry-config.json")).toBeVisible();
+    await expect.poll(async () => await readWorkspaceFile(page, "config.json")).toBe(jsonContent);
   });
 
   test("autosaves edits for files that already have a saved path", async ({ page }) => {

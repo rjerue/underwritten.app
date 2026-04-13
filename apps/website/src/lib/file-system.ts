@@ -16,6 +16,8 @@ const handleDatabaseName = "underwritten-file-handles";
 const handleStoreName = "handles";
 const nativeDirectoryHandleKey = "native-directory";
 
+const textDecoder = new TextDecoder("utf-8", { fatal: true });
+
 type WindowWithDirectoryPicker = Window & {
   showDirectoryPicker?: (options?: {
     mode?: "read" | "readwrite";
@@ -181,7 +183,7 @@ async function collectWorkspaceSnapshots(
 
     const file = await (handle as FileSystemFileHandle).getFile();
     snapshots.push({
-      content: await file.text(),
+      content: decodeTextFileContent(await file.arrayBuffer(), entryPath),
       path: entryPath,
     });
   }
@@ -374,6 +376,43 @@ export async function listDirectory(
   return sortEntries(entries);
 }
 
+function isUnsupportedTextControlCharacter(value: number) {
+  return (
+    (value < 32 && value !== 9 && value !== 10 && value !== 13) || (value >= 127 && value <= 159)
+  );
+}
+
+function createBinaryFileError(filePath?: string) {
+  return new Error(
+    filePath
+      ? `Cannot open ${filePath} because it appears to be a binary file.`
+      : "Cannot open this file because it appears to be a binary file.",
+  );
+}
+
+export function decodeTextFileContent(content: ArrayBuffer | Uint8Array, filePath?: string) {
+  const bytes = content instanceof Uint8Array ? content : new Uint8Array(content);
+
+  if (bytes.includes(0)) {
+    throw createBinaryFileError(filePath);
+  }
+
+  let decodedContent: string;
+  try {
+    decodedContent = textDecoder.decode(bytes);
+  } catch {
+    throw createBinaryFileError(filePath);
+  }
+
+  for (let index = 0; index < decodedContent.length; index += 1) {
+    if (isUnsupportedTextControlCharacter(decodedContent.charCodeAt(index))) {
+      throw createBinaryFileError(filePath);
+    }
+  }
+
+  return decodedContent;
+}
+
 export async function createDirectory(
   mode: FileStorageMode,
   nativeDirectoryHandle: FileSystemDirectoryHandle | null,
@@ -408,7 +447,7 @@ export async function readFile(
   const fileHandle = await directoryHandle.getFileHandle(basename(normalizedPath));
   const file = await fileHandle.getFile();
 
-  return await file.text();
+  return decodeTextFileContent(await file.arrayBuffer(), normalizedPath);
 }
 
 export async function writeFile(

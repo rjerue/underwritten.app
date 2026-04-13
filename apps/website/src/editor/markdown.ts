@@ -2,7 +2,7 @@ import type { Descendant, Node } from "slate";
 import { Editor, Element as SlateElement } from "slate";
 
 import { blankDocumentValue, defaultTitle } from "./constants";
-import type { CodeBlockData, CustomElement, StoredDraft, TableData } from "./types";
+import type { CodeBlockData, CustomElement, DocumentFormat, StoredDraft, TableData } from "./types";
 import { normalizeCodeLanguage } from "../components/code-block-editor";
 
 export function createParagraph(text = ""): CustomElement {
@@ -155,6 +155,20 @@ export function parseMarkdownDocument(markdown: string): StoredDraft {
   };
 }
 
+export function parsePlainTextDocument(text: string): StoredDraft {
+  return {
+    codeBlocks: [],
+    title: defaultTitle,
+    value: normalizeDocumentValue(text.split("\n").map((line) => createParagraph(line))),
+    tables: [],
+    version: 2,
+  };
+}
+
+export function parseDocumentContent(content: string, format: DocumentFormat): StoredDraft {
+  return format === "markdown" ? parseMarkdownDocument(content) : parsePlainTextDocument(content);
+}
+
 export function serializeMarkdown(
   documentValue: Descendant[],
   tables: TableData[],
@@ -223,6 +237,18 @@ export function titleFromFileName(fileName: string) {
   return (segments.at(-1) ?? fileName).replace(/\.[^.]+$/, "");
 }
 
+export function getDocumentFormatFromFilePath(filePath: string): DocumentFormat {
+  const fileName = filePath.split("/").filter(Boolean).at(-1) ?? filePath;
+  const extension = fileName.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
+
+  return extension === "md" ||
+    extension === "markdown" ||
+    extension === "mdown" ||
+    extension === "mkd"
+    ? "markdown"
+    : "plain-text";
+}
+
 function sanitizePathSegments(input: string) {
   const segments = input
     .split("/")
@@ -245,7 +271,7 @@ export function sanitizeFilePath(filePath: string) {
   const fileName = segments[lastIndex];
   if (!fileName) return null;
 
-  segments[lastIndex] = fileName.endsWith(".md") ? fileName : `${fileName}.md`;
+  segments[lastIndex] = /\.[^.]+$/.test(fileName) ? fileName : `${fileName}.md`;
   return segments.join("/");
 }
 
