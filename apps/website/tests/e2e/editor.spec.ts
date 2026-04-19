@@ -760,7 +760,7 @@ test.describe("editor core flows", () => {
     });
     await page.getByTestId("sidebar-save").click({ button: "right" });
 
-    await expect(page.getByTestId("document-title")).toHaveValue("alpha-note");
+    await expect(page.getByTestId("document-title")).toHaveValue("alpha-note.md");
     await expect(page.getByTestId("current-file-name")).toContainText("alpha-note.md");
     await expect(page.getByTestId("tree-entry-alpha-note.md")).toBeVisible();
 
@@ -791,6 +791,23 @@ test.describe("editor core flows", () => {
     await expect(rawMode(page)).toHaveValue(/First draft/);
     await expect(rawMode(page)).not.toHaveValue(/Unsaved buffer/);
     await expect(page.getByTestId("current-file-name")).toContainText("alpha-note.md");
+  });
+
+  test("page title includes the current file name", async ({ page }) => {
+    await gotoEditor(page, createDraft([""], { title: "Integration Draft" }));
+
+    page.once("dialog", async (dialog) => {
+      expect(dialog.type()).toBe("prompt");
+      await dialog.accept("notes/alpha-note.md");
+    });
+    await page.getByTestId("sidebar-save").click({ button: "right" });
+
+    await expect(page).toHaveTitle(
+      "Integration Draft (alpha-note.md) - Underwritten Markdown Editor",
+    );
+
+    await page.getByTestId("document-title").fill("alpha-note.md");
+    await expect(page).toHaveTitle("alpha-note.md - Underwritten Markdown Editor");
   });
 
   test("opens JSON as plain text and rejects binary files", async ({ page }) => {

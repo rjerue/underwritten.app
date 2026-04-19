@@ -1,7 +1,7 @@
 import type { Descendant, Node } from "slate";
 import { Editor, Element as SlateElement } from "slate";
 
-import { blankDocumentValue, defaultTitle } from "./constants";
+import { appWindowTitle, blankDocumentValue, defaultTitle } from "./constants";
 import type { CodeBlockData, CustomElement, DocumentFormat, StoredDraft, TableData } from "./types";
 import { normalizeCodeLanguage } from "../components/code-block-editor";
 
@@ -234,7 +234,22 @@ export function buildDocumentFingerprint(title: string, markdown: string) {
 
 export function titleFromFileName(fileName: string) {
   const segments = fileName.split("/").filter(Boolean);
-  return (segments.at(-1) ?? fileName).replace(/\.[^.]+$/, "");
+  return segments.at(-1) ?? fileName;
+}
+
+export function buildPageTitle(title: string, currentFilePath: string | null) {
+  const documentTitle = title.trim() || defaultTitle;
+  const fileName = currentFilePath?.split("/").filter(Boolean).at(-1) ?? null;
+
+  if (!fileName) {
+    return `${documentTitle} - ${appWindowTitle}`;
+  }
+
+  if (documentTitle === titleFromFileName(fileName)) {
+    return `${fileName} - ${appWindowTitle}`;
+  }
+
+  return `${documentTitle} (${fileName}) - ${appWindowTitle}`;
 }
 
 export function getDocumentFormatFromFilePath(filePath: string): DocumentFormat {

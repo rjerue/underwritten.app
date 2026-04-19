@@ -8,6 +8,7 @@ import type { CodeBlockData, TableData } from "./types";
 export const draftStorageKey = "underwritten.markdown-editor.draft";
 export const appearanceStorageKey = "underwritten.markdown-editor.appearance";
 export const workspaceStorageKey = "underwritten.markdown-editor.workspace";
+export const appWindowTitle = "Underwritten Markdown Editor";
 export const defaultTitle = "Untitled Document";
 export const starterTitle = "Welcome!";
 export const defaultSidebarCollapsed = false;

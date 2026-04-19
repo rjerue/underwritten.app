@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import {
+  buildPageTitle,
   createParagraph,
   getDocumentFormatFromFilePath,
   getNodeText,
@@ -100,6 +101,16 @@ describe("markdown document helpers", () => {
     expect(getDocumentFormatFromFilePath("notes/daily.md")).toBe("markdown");
     expect(getDocumentFormatFromFilePath("notes/daily.markdown")).toBe("markdown");
     expect(getDocumentFormatFromFilePath("config.json")).toBe("plain-text");
+  });
+
+  test("builds a page title that includes the saved file name", () => {
+    expect(buildPageTitle("Integration Draft", "notes/alpha-note.md")).toBe(
+      "Integration Draft (alpha-note.md) - Underwritten Markdown Editor",
+    );
+    expect(buildPageTitle("alpha-note.md", "notes/alpha-note.md")).toBe(
+      "alpha-note.md - Underwritten Markdown Editor",
+    );
+    expect(buildPageTitle("", null)).toBe("Untitled Document - Underwritten Markdown Editor");
   });
 
   test("parses plain text without importing markdown tables or code blocks", () => {

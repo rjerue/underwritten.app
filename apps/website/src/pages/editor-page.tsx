@@ -46,6 +46,7 @@ import { TableEditor, type TableNavigationApi } from "../components/table-editor
 import { Button } from "../components/ui/button";
 import { useApplyAppearanceSettings } from "../editor/appearance";
 import {
+  appWindowTitle,
   autosaveDelayMs,
   blankDocumentValue,
   defaultAppearance,
@@ -66,6 +67,7 @@ import {
 import { buildInlineMarkdownRanges } from "../editor/inline-markdown";
 import { getPageWidthClass, getSidebarDesktopOffsetClass } from "../editor/layout";
 import {
+  buildPageTitle,
   buildDocumentFingerprint,
   createParagraph,
   dirname,
@@ -1100,6 +1102,14 @@ export function EditorPage() {
   useEffect(() => {
     currentMarkdownRef.current = currentMarkdown;
   }, [currentMarkdown]);
+
+  useEffect(() => {
+    document.title = buildPageTitle(title, currentFilePath);
+
+    return () => {
+      document.title = appWindowTitle;
+    };
+  }, [currentFilePath, title]);
 
   const shouldSyncTitleWithFilePath = useCallback(
     (nextFilePath: string) => {

@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { AboutPage } from "../components/about-page";
 import { BrandNavigation } from "../components/brand-navigation";
 import { ModeToggle } from "../components/mode-toggle";
 import { useApplyAppearanceSettings } from "../editor/appearance";
-import { defaultAppearance, defaultPageWidthMode } from "../editor/constants";
+import { appWindowTitle, defaultAppearance, defaultPageWidthMode } from "../editor/constants";
 import { getPageWidthClass } from "../editor/layout";
 import { loadAppearance, loadWorkspaceSettings } from "../editor/storage";
 
@@ -15,6 +15,10 @@ export function AboutRoute() {
   const pageWidthMode = initialWorkspace?.pageWidthMode ?? defaultPageWidthMode;
 
   useApplyAppearanceSettings(appearanceSettings);
+
+  useEffect(() => {
+    document.title = appWindowTitle;
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
